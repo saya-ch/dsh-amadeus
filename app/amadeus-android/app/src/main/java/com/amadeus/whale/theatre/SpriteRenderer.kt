@@ -25,14 +25,14 @@ interface SpriteRenderer {
 
 object SpriteAssetMap {
   private val map = mapOf(
-    AmadeusSprite.shy to "amadeus/whale-shy.webp",
-    AmadeusSprite.think to "amadeus/whale-confused.webp",
-    AmadeusSprite.tool to "amadeus/whale-serious.webp",
-    AmadeusSprite.serious to "amadeus/whale-serious.webp",
-    AmadeusSprite.wag to "amadeus/whale-cheerful.webp",
-    AmadeusSprite.gray to "amadeus/whale-frightened.webp",
-    AmadeusSprite.smile to "amadeus/whale-starry.webp",
-    AmadeusSprite.talk to "amadeus/maid-left.webp",
+    AmadeusSprite.shy to "file:///android_asset/amadeus/whale-shy.webp",
+    AmadeusSprite.think to "file:///android_asset/amadeus/whale-confused.webp",
+    AmadeusSprite.tool to "file:///android_asset/amadeus/whale-serious.webp",
+    AmadeusSprite.serious to "file:///android_asset/amadeus/whale-serious.webp",
+    AmadeusSprite.wag to "file:///android_asset/amadeus/whale-cheerful.webp",
+    AmadeusSprite.gray to "file:///android_asset/amadeus/whale-frightened.webp",
+    AmadeusSprite.smile to "file:///android_asset/amadeus/whale-starry.webp",
+    AmadeusSprite.talk to "file:///android_asset/amadeus/maid-left.webp",
   )
   fun asset(sprite: AmadeusSprite): String = map.getValue(sprite)
 }

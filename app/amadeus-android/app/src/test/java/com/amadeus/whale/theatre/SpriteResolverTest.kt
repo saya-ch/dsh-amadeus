@@ -8,13 +8,16 @@ import kotlin.test.assertTrue
 class SpriteResolverTest {
   @Test fun assetMapCoversAllSprites() {
     for (sprite in AmadeusSprite.entries) {
-      assertTrue(SpriteAssetMap.asset(sprite).startsWith("amadeus/"), "asset($sprite) 应落在 amadeus/")
+      assertTrue(
+        SpriteAssetMap.asset(sprite).startsWith("file:///android_asset/amadeus/"),
+        "asset($sprite) 应落在 file:///android_asset/amadeus/",
+      )
     }
   }
   @Test fun shyMapsToWhaleShy() {
-    assertEquals("amadeus/whale-shy.webp", SpriteAssetMap.asset(AmadeusSprite.shy))
+    assertEquals("file:///android_asset/amadeus/whale-shy.webp", SpriteAssetMap.asset(AmadeusSprite.shy))
   }
   @Test fun seriousMapsToWhaleSerious() {
-    assertEquals("amadeus/whale-serious.webp", SpriteAssetMap.asset(AmadeusSprite.serious))
+    assertEquals("file:///android_asset/amadeus/whale-serious.webp", SpriteAssetMap.asset(AmadeusSprite.serious))
   }
 }
