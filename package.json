@@ -11,6 +11,9 @@
       "types": "./lib/index.d.mts",
       "default": "./lib/index.mjs"
     },
+    "./client": {
+      "default": "./lib/client.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
