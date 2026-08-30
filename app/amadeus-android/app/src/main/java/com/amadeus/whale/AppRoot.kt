@@ -55,6 +55,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
   var screen by remember { mutableStateOf(Screen.Demo) }
   var selectedSessionId by remember { mutableStateOf<String?>(null) }
   var settingsOpen by remember { mutableStateOf(false) }
+  var settingsBaseUrl by remember { mutableStateOf<String?>(null) }
   var historyOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
 
@@ -73,6 +74,10 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
   }
 
   val settingsVm = remember { SettingsViewModel(prefs, apiOf) }
+  val openSettings: () -> Unit = {
+    settingsBaseUrl = prefs.baseUrl
+    settingsOpen = true
+  }
   if (settingsOpen) {
     SettingsScreen(viewModel = settingsVm, isRealMode = screen == Screen.Real, onDone = {
       settingsOpen = false
@@ -81,6 +86,9 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
         screen = Screen.Demo
       } else if (screen != Screen.Real) {
         screen = Screen.Real
+      } else if (settingsBaseUrl != prefs.baseUrl) {
+        // 网关已变更：丢弃旧网关上的会话与 SSE 连接，回到选档按新网关重新进入
+        selectedSessionId = null
       }
     })
     return
@@ -94,7 +102,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
       TheatreScreen(
         viewModel = vm,
         backgroundResolver = { "palace-night" },
-        onOpenSettings = { settingsOpen = true },
+        onOpenSettings = openSettings,
       )
       WindowOverlayHost(
         api = null,
@@ -104,21 +112,21 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
       )
     }
     Screen.Real -> {
-      val saveVm = remember { SaveSlotViewModel(apiOf(prefs.baseUrl!!)) }
-      LaunchedEffect(Unit) { saveVm.load() }
+      val saveVm = remember(prefs.baseUrl) { SaveSlotViewModel(apiOf(prefs.baseUrl!!)) }
+      LaunchedEffect(prefs.baseUrl) { saveVm.load() }
       selectedSessionId?.let { sessionId ->
         val api = apiOf(prefs.baseUrl!!)
         val stream = remember(prefs.baseUrl) { AmadeusStream(prefs.baseUrl!!, client) }
-        val realFeed = remember(sessionId) { RealFeed(sessionId, api, stream) }
-        val vm = remember(sessionId) {
+        val realFeed = remember(sessionId, prefs.baseUrl) { RealFeed(sessionId, api, stream) }
+        val vm = remember(sessionId, prefs.baseUrl) {
           TheatreViewModel(realFeed, backgroundResolver = { mood ->
             if (mood == AmadeusMood.tool || mood == AmadeusMood.think) "bg-gpt-collaboration-workshop"
             else "bg-claude-writing-study"
           })
         }
         val state by vm.uiState.collectAsState()
-        LaunchedEffect(sessionId) { vm.load() }
-        DisposableEffect(sessionId) {
+        LaunchedEffect(sessionId, prefs.baseUrl) { vm.load() }
+        DisposableEffect(sessionId, prefs.baseUrl) {
           val closer = realFeed.attach { event ->
             when (event) {
               is StreamEvent.Segments -> event.list.forEach { vm.enqueue(it) }
@@ -131,7 +139,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
         TheatreScreen(
           viewModel = vm,
           backgroundResolver = vm.backgroundResolverFor,
-          onOpenSettings = { settingsOpen = true },
+          onOpenSettings = openSettings,
           onOpenHistory = { historyOpen = true },
           inputBar = { send -> InputBar(onSend = { text -> scope.launch { vm.sendToFeed(text) } }) },
         )
@@ -153,7 +161,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
         SaveSlotScreen(
           viewModel = saveVm,
           onOpen = { selectedSessionId = it },
-          onChangeConnection = { settingsOpen = true },
+          onChangeConnection = openSettings,
           onNewSession = {
             scope.launch { saveVm.create()?.let { selectedSessionId = it.id } }
           },
