@@ -438,7 +438,7 @@ export class MobileAccessService extends Service {
   private localLifecycle = 0
   private localClosed = true
 
-  constructor(ctx: Context) { super(ctx, 'mobileAccess') }
+  constructor(ctx: Context) { super(ctx, 'amadeusAccess') }
 
   /** Register a normal Cordis extension and return an idempotent disposer. */
   registerExtension(definition: MobileExtensionDefinition): () => void {

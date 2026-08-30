@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { addressAllowed, isLoopbackAddress, RequestTrustPolicy } from './network.js'
 
-export const DEVICE_COOKIE = 'dsh_ma_device'
-export const SESSION_COOKIE = 'dsh_ma_session'
-export const CSRF_COOKIE = 'dsh_ma_csrf'
-export const CSRF_HEADER = 'x-dsh-mobile-csrf'
-export const LOCAL_ADMIN_PREFIX = '/api/mobile-access'
-export const AUTH_PREFIX = '/mobile-access'
+export const DEVICE_COOKIE = 'amw_device'
+export const SESSION_COOKIE = 'amw_session'
+export const CSRF_COOKIE = 'amw_csrf'
+export const CSRF_HEADER = 'x-amw-csrf'
+export const LOCAL_ADMIN_PREFIX = '/api/amadeus'
+export const AUTH_PREFIX = '/amadeus'
 export const WS_PATHS = new Set(['/api/events.mux', '/api/events.host', '/api/remote.mux'])
 
 /** Terse request failure safe to expose without internal diagnostics. */

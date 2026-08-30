@@ -314,7 +314,7 @@ const PAIR_SCRIPT = `(() => {
   form.addEventListener('submit', async (event) => {
     event.preventDefault()
     status.value = 'Pairing…'
-    const response = await fetch('/mobile-access/auth/pair', {
+    const response = await fetch('/amadeus/auth/pair', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/json' },
@@ -353,15 +353,15 @@ const LOGIN_SCRIPT = `(() => {
     try {
       const resolved = new URL(candidate, location.origin)
       const pathname = decodeURIComponent(resolved.pathname)
-      if (resolved.origin === location.origin && pathname !== '/mobile-access'
-        && !pathname.startsWith('/mobile-access/') && !pathname.includes('\\\\')) {
+      if (resolved.origin === location.origin && pathname !== '/amadeus'
+        && !pathname.startsWith('/amadeus/') && !pathname.includes('\\\\')) {
         returnPath = resolved.pathname + resolved.search + resolved.hash
       }
     } catch {
       // Malformed untrusted return targets keep the safe root default.
     }
   }
-  fetch('/mobile-access/auth/renew', {
+  fetch('/amadeus/auth/renew', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
@@ -1024,7 +1024,7 @@ export class MobileAccessGateway {
       cookie(DEVICE_COOKIE, result.deviceToken, {
         tls: this.tlsEnabled,
         httpOnly: true,
-        path: '/mobile-access/auth/renew',
+        path: '/amadeus/auth/renew',
         maxAgeSeconds: (result.deviceExpiresAt - now) / 1000,
       }),
     ])
@@ -1051,7 +1051,7 @@ export class MobileAccessGateway {
         response.setHeader('Set-Cookie', cookie(DEVICE_COOKIE, '', {
           tls: this.tlsEnabled,
           httpOnly: true,
-          path: '/mobile-access/auth/renew',
+          path: '/amadeus/auth/renew',
           maxAgeSeconds: 0,
         }))
       }

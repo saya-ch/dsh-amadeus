@@ -1,6 +1,15 @@
-# Independent Amadeus plugin. DSH Mobile owns the shared authenticated gateway.
+# Amadeus: Whale — fully independent plugin. Own gateway, own port, own files.
 - insert:
     - id: amadeus
       name: dsh-amadeus
-      inject: [mobileAccess]
-      config: {}
+      inject: [webServer, connection]
+      config:
+        stateFile: !!js dshHomePath('amadeus/devices.json')
+        controlFile: !!js dshHomePath('amadeus/control.json')
+        initiallyEnabled: false
+        listenHost: 127.0.0.1
+        listenPort: 3444
+        upstreamOrigin: http://127.0.0.1:3080
+        allowedCidrs: [127.0.0.0/8]
+        tls:
+          mode: disabled

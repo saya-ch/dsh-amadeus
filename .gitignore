@@ -6,3 +6,9 @@ dist/
 .env
 apps/
 app/android/
+
+app/amadeus-android/app/build/
+app/amadeus-android/.gradle/
+app/amadeus-android/.kotlin/
+app/amadeus-android/app/.cxx/
+app/amadeus-android/build/

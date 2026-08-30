@@ -1,8 +1,8 @@
-import type { MobileExtensionDefinition, MobileHostRoute, MobileRouteRequest, MobileRouteResponse } from 'dsh-mobile'
+import type { MobileExtensionDefinition, MobileHostRoute, MobileRouteRequest, MobileRouteResponse } from './extensions.js'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import { ensureAmadeusTag, parseAmadeusSegments, parseAmadeusTag } from './amadeus-tags.js'
 
-/** Stable namespace within the shared DSH Mobile gateway. */
+/** Stable namespace within the Amadeus gateway. */
 export const AMADEUS_EXTENSION_ID = 'amadeus'
 
 /** A real DSH session projected by an Amadeus session adapter. */
@@ -100,19 +100,19 @@ function route(
   } }
 }
 
-/** Routes are authenticated by DSH Mobile before any Amadeus adapter is invoked. */
+/** Routes are authenticated by the Amadeus gateway before any adapter is invoked. */
 export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): MobileExtensionDefinition {
   return {
     schemaVersion: 1,
     id: AMADEUS_EXTENSION_ID,
     name: 'Amadeus: Whale',
     version: '0.1.0',
-    description: 'Independent Amadeus business routes using the DSH Mobile connection layer',
+    description: 'Independent Amadeus business routes on the Amadeus gateway',
     routes: [
       route('GET', '/status', () => json({
         id: AMADEUS_EXTENSION_ID,
         version: '0.1.0',
-        connection: 'dsh-mobile',
+        connection: 'amadeus',
         capabilities: { tags: true, sessions: options.sessions !== undefined, reports: options.reports !== undefined, choices: options.choices !== undefined },
       })),
       route('GET', '/sessions', async request => {
