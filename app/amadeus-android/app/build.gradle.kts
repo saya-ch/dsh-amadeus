@@ -39,6 +39,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.android)
   debugImplementation(libs.compose.ui.tooling)
   testImplementation(libs.junit)
+  testImplementation(kotlin("test"))
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.okhttp.mockwebserver)
 }
