@@ -56,13 +56,17 @@ fun HistoryWindow(sessionId: String, api: AmadeusApi, onClose: () -> Unit) {
     loading = true
     failed = false
     runCatching {
-      // 消息不带 seq，用已加载条数作 beforeSeq 代理（分页推进单调，页面重叠由去重兜底）
+      // Host 的 page 契约不暴露每条消息的 seq（fold 丢弃了非消息事件，条数 ≠ seq），
+      // 无法用真实 seq 精确换页。这里把"已加载条数"当作单调递增的分页游标（beforeSeq 代理）：
+      // 会话持续增长时游标单调推进，页面重叠由下方 (role,text) 去重兜底。
       api.pageSession(sessionId, beforeSeq = if (loadedOnce) messages.size.toLong() else null)
     }
       .onSuccess { page ->
         val fresh = page.messages.asReversed().filter { m ->
           messages.none { it.role == m.role && it.text == m.text }
         }
+        // 页面无新内容：与已加载高度重叠，直接终止，避免同页反复拉取造成卡住/死循环
+        if (fresh.isEmpty()) { hasMore = false; return@onSuccess }
         messages = messages + fresh
         hasMore = page.hasMore
         loadedOnce = true

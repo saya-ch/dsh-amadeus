@@ -3,9 +3,15 @@ package com.amadeus.whale.theatre
 import android.content.Context
 import android.media.MediaPlayer
 
-object AmbientSoundController { var enabled: Boolean = true }
+object AmbientSoundController {
+  var enabled: Boolean = true
+  private var active: AmbientSound? = null
+  fun bind(sound: AmbientSound) { active = sound }
+  fun stopAll() { active?.stopAll() }
+}
 
 class AmbientSound(private val context: Context) {
+  init { AmbientSoundController.bind(this) }
   private val players = mutableMapOf<String, MediaPlayer?>()
 
   private fun rawId(name: String): Int =

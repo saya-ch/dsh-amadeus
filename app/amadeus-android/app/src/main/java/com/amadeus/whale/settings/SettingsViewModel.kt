@@ -32,7 +32,12 @@ class SettingsViewModel(
 
   var soundEnabled: Boolean
     get() = prefs.soundEnabled
-    set(v) { prefs.soundEnabled = v; AmbientSoundController.enabled = v }
+    set(v) {
+      prefs.soundEnabled = v
+      AmbientSoundController.enabled = v
+      // 关闭开关时同步停掉正在循环/播放的音频，而不只是拦截后续 play()
+      if (!v) AmbientSoundController.stopAll()
+    }
   var showToolProgress: Boolean
     get() = prefs.showToolProgress
     set(v) { prefs.showToolProgress = v }

@@ -36,7 +36,7 @@ fun TheatreScreen(
   onOpenSettings: () -> Unit = {},
   onOpenWindow: (windowId: String, type: AmadeusWindow) -> Unit = { _, _ -> },
   onOpenHistory: (() -> Unit)? = null,
-  inputBar: @Composable (send: (String) -> Unit) -> Unit = {},
+  inputBar: @Composable () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsState()
   val bg by remember(state.background) { mutableStateOf(state.background) }
@@ -51,6 +51,8 @@ fun TheatreScreen(
         modifier = Modifier.fillMaxSize(),
       )
     }
+    // 心情点缀层（背景之上、立绘之下；tool/think 不渲染）
+    MoodEffects(mood = state.mood, modifier = Modifier.fillMaxSize())
     // 立绘层（换 sprite 滑动入场）
     AnimatedContent(
       targetState = state.sprite,
@@ -66,7 +68,7 @@ fun TheatreScreen(
         .fillMaxWidth()
         .padding(16.dp),
     ) {
-      inputBar { }
+      inputBar()
       Column(
         modifier = Modifier
           .fillMaxWidth()
@@ -87,11 +89,13 @@ fun TheatreScreen(
         }
       }
     }
-    // 右上角齿轮
-    IconButton(
-      onClick = onOpenSettings,
-      modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-    ) { Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color.White) }
+    // 右上角：快进（demo 可快进到底）+ 齿轮
+    Row(Modifier.align(Alignment.TopEnd).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+      TextButton(onClick = { viewModel.skipToEnd() }) { Text(text = "快进", color = Color.White) }
+      IconButton(onClick = onOpenSettings) {
+        Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color.White)
+      }
+    }
     // 左上角历史（真实模式传入非空才显示）
     if (onOpenHistory != null) {
       TextButton(

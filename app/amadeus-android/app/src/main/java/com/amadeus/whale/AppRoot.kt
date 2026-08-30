@@ -73,6 +73,11 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
     }
   }
 
+  // 环境音仅 demo：离开 demo（进入真实模式）时停掉正在循环的 BGM/SFX
+  LaunchedEffect(screen) {
+    if (screen != Screen.Demo) sound.stopAll()
+  }
+
   val settingsVm = remember { SettingsViewModel(prefs, apiOf) }
   val openSettings: () -> Unit = {
     settingsBaseUrl = prefs.baseUrl
@@ -141,7 +146,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
           backgroundResolver = vm.backgroundResolverFor,
           onOpenSettings = openSettings,
           onOpenHistory = { historyOpen = true },
-          inputBar = { send -> InputBar(onSend = { text -> scope.launch { vm.sendToFeed(text) } }) },
+          inputBar = { InputBar(onSend = { text -> scope.launch { vm.sendToFeed(text) } }) },
         )
         WindowOverlayHost(
           api = api,
@@ -152,7 +157,13 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
               vm.dismissChoice()
             }
           },
-          onDismissChoice = { vm.dismissChoice() },
+          onDismissChoice = {
+            // 用户关闭 choice 窗口 = 取消：通知 host 其 wait(choiceId) 应解除
+            state.choice?.let { c ->
+              scope.launch { runCatching { api.cancelChoice(c.choiceId) } }
+            }
+            vm.dismissChoice()
+          },
         )
         if (historyOpen) {
           HistoryWindow(sessionId = sessionId, api = api, onClose = { historyOpen = false })

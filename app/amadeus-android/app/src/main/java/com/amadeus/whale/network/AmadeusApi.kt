@@ -76,6 +76,13 @@ class AmadeusApi(private val baseUrl: String, private val client: OkHttpClient) 
       json.encodeToString(ChoiceResolveBody(choiceId, selected)).toRequestBody(jsonType)
     ).build()) { }
 
+  // 用户关闭 choice 窗口时调用：POST /choice/cancel，body 仅带 choiceId。
+  // 注意：Host 分支需要对应新增 POST /choice/cancel 路由（服务端 follow-up，见最终报告）。
+  suspend fun cancelChoice(choiceId: String): Unit =
+    call(Request.Builder().url("$routes/choice/cancel").post(
+      json.encodeToString(ChoiceCancelBody(choiceId)).toRequestBody(jsonType)
+    ).build()) { }
+
   suspend fun pageSession(id: String, beforeSeq: Long? = null): SessionPagePayload =
     call(Request.Builder().url("$routes/sessions/$id/page${beforeSeq?.let { "?beforeSeq=$it" }.orEmpty()}").get().build()) { s ->
       json.decodeFromString<SessionPagePayload>(s)

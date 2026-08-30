@@ -7,7 +7,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 
 enum class AmadeusMood { shy, think, tool, happy, sad, idle }
 enum class AmadeusSprite { shy, think, tool, serious, wag, gray, smile, talk }

@@ -16,5 +16,6 @@ import kotlinx.serialization.Serializable
 @Serializable data class ReportPayload(val id: String, val title: String, val markdown: String, val createdAt: Long)
 @Serializable data class PreviewPayload(val id: String, val type: String, val content: String, val title: String)
 @Serializable data class ChoiceResolveBody(val choiceId: String, val selected: String)
+@Serializable data class ChoiceCancelBody(val choiceId: String)
 @Serializable data class PageMessage(val role: String, val text: String)
 @Serializable data class SessionPagePayload(val messages: List<PageMessage> = emptyList(), val hasMore: Boolean = false)

@@ -14,10 +14,11 @@ class RealFeed(
 
   override suspend fun initial(): List<AmadeusSegment> {
     val page = api.pageSession(sessionId)
-    val assistantTexts = page.messages.filter { it.role == "assistant" }
-      .map { it.text }.joinToString("\n")
-    return if (assistantTexts.isBlank()) emptyList()
-      else AmadeusSegmentParser.parse(assistantTexts)
+    // 读档语义：进入已有会话只展示最新态，不重播整段历史（历史浏览交给 HistoryWindow）。
+    // 只取最后一条 assistant 消息解析为台词段。
+    val lastAssistant = page.messages.filter { it.role == "assistant" }.lastOrNull()?.text.orEmpty()
+    return if (lastAssistant.isBlank()) emptyList()
+      else AmadeusSegmentParser.parse(lastAssistant)
   }
 
   fun attach(onEvent: (StreamEvent) -> Unit): AutoCloseable =

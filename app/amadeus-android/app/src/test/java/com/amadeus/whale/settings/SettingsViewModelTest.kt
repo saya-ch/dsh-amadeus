@@ -3,6 +3,7 @@ package com.amadeus.whale.settings
 import com.amadeus.whale.AmadeusPrefs
 import com.amadeus.whale.PrefsStore
 import com.amadeus.whale.network.AmadeusApi
+import com.amadeus.whale.theatre.AmbientSoundController
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -11,6 +12,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -48,5 +50,16 @@ class SettingsViewModelTest {
     store.putString("gateway_url", "https://x:3444")
     vm.disconnect()
     assertNull(store.getString("gateway_url"))
+  }
+
+  @Test fun soundEnabledSetterTogglesControllerAndPersists() {
+    AmbientSoundController.enabled = true
+    store.putBoolean("sound_enabled", true)
+    vm.soundEnabled = false
+    assertFalse(AmbientSoundController.enabled)
+    assertEquals(false, store.getBoolean("sound_enabled", true))
+    vm.soundEnabled = true
+    assertTrue(AmbientSoundController.enabled)
+    assertEquals(true, store.getBoolean("sound_enabled", false))
   }
 }

@@ -54,6 +54,16 @@ class AmadeusApiTest {
     assertTrue(body.contains("\"selected\":\"继续\""))
   }
 
+  @Test fun cancelChoicePostsToCancelWithChoiceId() = runTest {
+    server.enqueue(MockResponse().setBody("""{"ok":true}""")
+      .addHeader("Content-Type", "application/json"))
+    api.cancelChoice("cq_abc")
+    val req = server.takeRequest()
+    assertEquals("/amadeus/extensions/amadeus/routes/choice/cancel", req.path)
+    val body = req.body.readUtf8()
+    assertTrue(body.contains("\"choiceId\":\"cq_abc\""))
+  }
+
   @Test fun pageSessionParsesPage() = runTest {
     server.enqueue(MockResponse().setBody(
       """{"messages":[{"role":"assistant","text":"呜\n[[AMW:{}]]"}],"hasMore":false}"""

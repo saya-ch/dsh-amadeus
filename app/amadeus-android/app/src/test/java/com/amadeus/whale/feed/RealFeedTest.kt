@@ -34,4 +34,19 @@ class RealFeedTest {
     assertEquals("好呀", segs[0].dialog)
     assertEquals(AmadeusMood.happy, segs[0].tag.mood)
   }
+
+  @Test fun initialTakesOnlyLastAssistantNotFullHistory() = runTest {
+    server.enqueue(MockResponse().setBody(
+      """{"messages":[
+        {"role":"user","text":"帮我改个文件"},
+        {"role":"assistant","text":"好呀\n[[AMW:{\"mood\":\"happy\"}]]"},
+        {"role":"user","text":"再改一下"},
+        {"role":"assistant","text":"改好了\n[[AMW:{\"mood\":\"sad\"}]]"}
+      ],"hasMore":false}"""
+    ).addHeader("Content-Type", "application/json"))
+    val segs = feed.initial()
+    assertEquals(1, segs.size)
+    assertEquals("改好了", segs[0].dialog)
+    assertEquals(AmadeusMood.sad, segs[0].tag.mood)
+  }
 }
