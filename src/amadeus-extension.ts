@@ -110,10 +110,11 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
     description: 'Independent Amadeus business routes on the Amadeus gateway',
     routes: [
       route('GET', '/status', () => json({
-        id: AMADEUS_EXTENSION_ID,
-        version: '0.1.0',
-        connection: 'amadeus',
-        capabilities: { tags: true, sessions: options.sessions !== undefined, reports: options.reports !== undefined, choices: options.choices !== undefined },
+        capabilities: {
+          sessions: options.sessions !== undefined,
+          reports: options.reports !== undefined,
+          choices: options.choices !== undefined,
+        },
       })),
       route('GET', '/sessions', async request => {
         const mode = request.query.get('mode') ?? AMADEUS_MODE_ID

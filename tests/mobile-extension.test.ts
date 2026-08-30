@@ -99,18 +99,15 @@ function registry(): MobileAccessService {
 }
 
 describe('Amadeus mobile extension routes', () => {
-  it('reports the shared connection and only installed capabilities', async () => {
+  it('reports only the installed capabilities', async () => {
     const extension = createAmadeusExtension()
     expect(extension).toMatchObject({ schemaVersion: 1, id: 'amadeus', name: 'Amadeus: Whale', version: '0.1.0' })
     expectJson(await call(extension, 'GET', '/status'), 200, {
-      id: 'amadeus',
-      version: '0.1.0',
-      connection: 'dsh-mobile',
-      capabilities: { tags: true, sessions: false, reports: false, choices: false },
+      capabilities: { sessions: false, reports: false, choices: false },
     })
     const configured = createAmadeusExtension({ sessions: sessionAdapter(), reports: reportAdapter(), choices: choiceAdapter() })
-    expect(decoded(await call(configured, 'GET', '/status'))).toMatchObject({
-      capabilities: { tags: true, sessions: true, reports: true, choices: true },
+    expect(decoded(await call(configured, 'GET', '/status'))).toEqual({
+      capabilities: { sessions: true, reports: true, choices: true },
     })
   })
 
@@ -352,7 +349,7 @@ describe('Amadeus in the real DSH Mobile registry', () => {
     expect(service.manifest().map(entry => entry.id)).toEqual(['amadeus', 'other-extension'])
     const response = await context.mobileAccess.route('amadeus', 'GET', '/status', request('GET', '/status'))
     expect(response.status).toBe(200)
-    expect(decoded(response)).toMatchObject({ connection: 'dsh-mobile' })
+    expect(decoded(response)).toEqual({ capabilities: { sessions: false, reports: false, choices: false } })
     await remounted.dispose()
     expect(service.manifest().map(entry => entry.id)).toEqual(['other-extension'])
     expect(stopLocal).not.toHaveBeenCalled()
