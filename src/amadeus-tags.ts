@@ -28,7 +28,7 @@ export function parseAmadeusTag(text: string): { clean: string, tag: AmadeusTag 
   const m = TAG_RE.exec(text)
   if (!m) return { clean: text, tag: null }
   try {
-    const raw = JSON.parse(m[1]) as Record<string, unknown>
+    const raw = JSON.parse(m[1]!) as Record<string, unknown>
     if (!VALID_MOODS.has(String(raw.mood)) || !VALID_SPRITES.has(String(raw.sprite)) ||
         !VALID_VOICES.has(String(raw.voice)) || !VALID_SFX.has(String(raw.sfx)) || !VALID_BGM.has(String(raw.bgm))) {
       return { clean: text.slice(0, m.index).trimEnd(), tag: null }
