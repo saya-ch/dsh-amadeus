@@ -73,6 +73,6 @@ class AmadeusApi(private val baseUrl: String, private val client: OkHttpClient) 
 
   suspend fun resolveChoice(choiceId: String, selected: String): Unit =
     call(Request.Builder().url("$routes/choice").post(
-      json.encodeToString(ChoiceResolveBody(selected)).toRequestBody(jsonType)
+      json.encodeToString(ChoiceResolveBody(choiceId, selected)).toRequestBody(jsonType)
     ).build()) { }
 }

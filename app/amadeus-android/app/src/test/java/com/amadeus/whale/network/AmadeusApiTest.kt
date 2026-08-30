@@ -44,4 +44,13 @@ class AmadeusApiTest {
     val req = server.takeRequest()
     assertTrue(req.body.readUtf8().contains("\"workspaceId\":\"w1\""))
   }
+
+  @Test fun resolveChoiceSendsChoiceId() = runTest {
+    server.enqueue(MockResponse().setBody("""{"ok":true}""")
+      .addHeader("Content-Type", "application/json"))
+    api.resolveChoice("cq_abc", "继续")
+    val body = server.takeRequest().body.readUtf8()
+    assertTrue(body.contains("\"choiceId\":\"cq_abc\""))
+    assertTrue(body.contains("\"selected\":\"继续\""))
+  }
 }

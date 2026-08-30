@@ -15,4 +15,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class PromptBody(val text: String)
 @Serializable data class ReportPayload(val id: String, val title: String, val markdown: String, val createdAt: Long)
 @Serializable data class PreviewPayload(val id: String, val type: String, val content: String, val title: String)
-@Serializable data class ChoiceResolveBody(val selected: String)
+@Serializable data class ChoiceResolveBody(val choiceId: String, val selected: String)
