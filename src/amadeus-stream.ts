@@ -1,15 +1,22 @@
 import { parseAmadeusSegments, type AmadeusSegment } from './amadeus-tags.js'
 
-/** One event carried by a DSH session follow frame. */
+/** One event carried by a DSH session follow frame or snapshot record. */
 export interface AmadeusSessionFollowEvent {
   readonly type: string
   readonly data?: unknown
+}
+
+/** A history record folded into a snapshot follow frame. */
+export interface AmadeusSessionSnapshotRecord {
+  readonly type: 'event'
+  readonly event: AmadeusSessionFollowEvent
 }
 
 /** A frame yielded by `sessionController.follow()` for a session address. */
 export interface AmadeusSessionFollowFrame {
   readonly type: 'snapshot' | 'event'
   readonly event?: AmadeusSessionFollowEvent
+  readonly records?: ReadonlyArray<AmadeusSessionSnapshotRecord>
 }
 
 /** Structural surface of the DSH session follow stream the hub consumes. */
@@ -28,12 +35,19 @@ const ENDED_REASON_SESSION = 'session_ended'
  * `open` pumps the follow stream and writes one `data:` payload per frame:
  *   - assistant/message text is re-parsed into segments (`句\n[[AMW:...]]`), one
  *     `segments` frame per sentence, preserving the original tagged raw text.
+ *   - a `snapshot` frame folds in ONLY the latest assistant/message record as
+ *     segments (the App already loaded full history via `page`, so folding
+ *     everything would duplicate; the latest record represents the current
+ *     state that the App then streams forward from).
  *   - a segment whose tag opens a `choice` window is emitted as a `choice` frame
  *     (choiceId/question/options) instead, matching the App contract.
  *   - the stream finishes with an `ended` frame when the session ends or the
  *     follow iteration completes.
- * The returned handle closes the pump; `onFinished` fires once the pump has
- * naturally drained (used by the SSE route to end its response stream).
+ * The returned handle closes the pump: it terminates the underlying follow
+ * subscription via `iterator.return()` (so a disconnected SSE client does not
+ * leave the DSH subscription alive) and is idempotent. `onFinished` fires once
+ * the pump has naturally drained (used by the SSE route to end its response
+ * stream); closing the pump suppresses the `ended` frame.
  */
 export class AmadeusStreamHub {
   constructor(private readonly ctx: AmadeusStreamContext) {}
@@ -42,6 +56,7 @@ export class AmadeusStreamHub {
     let closed = false
     let finished = false
     const frames = this.ctx.sessionController.follow({ address: { kind: 'session', sessionId } })
+    let iterator: AsyncIterator<AmadeusSessionFollowFrame> | undefined = frames[Symbol.asyncIterator]()
     const finish = (reason: string): void => {
       if (finished || closed) return
       finished = true
@@ -50,13 +65,19 @@ export class AmadeusStreamHub {
     }
     const pump = (async () => {
       try {
-        for await (const frame of frames) {
-          if (closed) break
+        for (;;) {
+          const next = await iterator.next()
+          if (closed || next.done) break
+          const frame = next.value
+          if (frame.type === 'snapshot') {
+            const latest = AmadeusStreamHub.latestAssistantEvent(frame.records ?? [])
+            if (latest !== undefined) this.emitText(latest, write)
+            continue
+          }
           if (frame.type !== 'event' || frame.event === undefined) continue
           const event = frame.event
           if (event.type === 'assistant/message') {
-            const text = (event.data as { message?: { text?: string } } | undefined)?.message?.text
-            if (typeof text === 'string' && text.length > 0) this.emit(text, write)
+            this.emitText(event, write)
           } else if (event.type === 'session/end') {
             finish(ENDED_REASON_SESSION)
             break
@@ -67,7 +88,18 @@ export class AmadeusStreamHub {
       }
       finish(ENDED_REASON_STREAM)
     })()
-    return () => { closed = true }
+    return () => {
+      if (closed) return
+      closed = true
+      const iter = iterator
+      iterator = undefined
+      void iter?.return?.()
+    }
+  }
+
+  private emitText(event: AmadeusSessionFollowEvent, write: (data: string) => void): void {
+    const text = (event.data as { message?: { text?: string } } | undefined)?.message?.text
+    if (typeof text === 'string' && text.length > 0) this.emit(text, write)
   }
 
   private emit(text: string, write: (data: string) => void): void {
@@ -75,6 +107,14 @@ export class AmadeusStreamHub {
     for (const segment of segments) {
       write(JSON.stringify(this.payload(segment)))
     }
+  }
+
+  private static latestAssistantEvent(records: ReadonlyArray<AmadeusSessionSnapshotRecord>): AmadeusSessionFollowEvent | undefined {
+    for (let i = records.length - 1; i >= 0; i--) {
+      const event = records[i]?.event
+      if (event?.type === 'assistant/message') return event
+    }
+    return undefined
   }
 
   private payload(segment: AmadeusSegment): Record<string, unknown> {
