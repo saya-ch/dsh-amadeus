@@ -10,7 +10,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
 enum class AmadeusMood { shy, think, tool, happy, sad, idle }
-enum class AmadeusSprite { shy, think, tool, wag, gray, smile, talk }
+enum class AmadeusSprite { shy, think, tool, serious, wag, gray, smile, talk }
 enum class AmadeusWindow { none, report, preview, choice }
 
 @Serializable
