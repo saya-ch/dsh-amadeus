@@ -53,4 +53,16 @@ class AmadeusApiTest {
     assertTrue(body.contains("\"choiceId\":\"cq_abc\""))
     assertTrue(body.contains("\"selected\":\"继续\""))
   }
+
+  @Test fun pageSessionParsesPage() = runTest {
+    server.enqueue(MockResponse().setBody(
+      """{"messages":[{"role":"assistant","text":"呜\n[[AMW:{}]]"}],"hasMore":false}"""
+    ).addHeader("Content-Type", "application/json"))
+    val page = api.pageSession("s1")
+    assertEquals(1, page.messages.size)
+    assertEquals("assistant", page.messages[0].role)
+    assertEquals("呜\n[[AMW:{}]]", page.messages[0].text)
+    assertEquals(false, page.hasMore)
+    assertTrue(server.takeRequest().path?.endsWith("/page") == true)
+  }
 }

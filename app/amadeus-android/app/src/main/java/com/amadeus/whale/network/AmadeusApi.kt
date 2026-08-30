@@ -75,4 +75,9 @@ class AmadeusApi(private val baseUrl: String, private val client: OkHttpClient) 
     call(Request.Builder().url("$routes/choice").post(
       json.encodeToString(ChoiceResolveBody(choiceId, selected)).toRequestBody(jsonType)
     ).build()) { }
+
+  suspend fun pageSession(id: String, beforeSeq: Long? = null): SessionPagePayload =
+    call(Request.Builder().url("$routes/sessions/$id/page${beforeSeq?.let { "?beforeSeq=$it" }.orEmpty()}").get().build()) { s ->
+      json.decodeFromString<SessionPagePayload>(s)
+    }
 }
