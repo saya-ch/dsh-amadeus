@@ -139,6 +139,14 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
     pending.resolve(answer)
   }
 
+  /** Reject a pending choice so the awaiting answerer rejects; a no-op when nothing is pending. */
+  async cancel(choiceId: string): Promise<void> {
+    const pending = this.pending.get(choiceId)
+    if (pending === undefined) return
+    this.release(choiceId, pending)
+    pending.reject(new Error('choice-cancelled'))
+  }
+
   /** Answer one user-questions/request; the app resolves it through the gateway. */
   async answerRequest(request: AmadeusUserQuestionRequest): Promise<AmadeusUserQuestionAnswer> {
     const question = request.questions[0]

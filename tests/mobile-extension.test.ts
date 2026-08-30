@@ -49,6 +49,7 @@ function choiceAdapter() {
   return {
     create: vi.fn<ChoiceAdapter['create']>().mockResolvedValue(undefined),
     resolve: vi.fn<ChoiceAdapter['resolve']>().mockResolvedValue(undefined),
+    cancel: vi.fn<ChoiceAdapter['cancel']>().mockResolvedValue(undefined),
     get: vi.fn<ChoiceAdapter['get']>().mockResolvedValue({ question: 'Continue?', options: ['Yes', 'No'] }),
   } satisfies ChoiceAdapter
 }

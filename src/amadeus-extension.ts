@@ -39,6 +39,7 @@ export interface AmadeusGatewayOptions {
   readonly choices?: {
     create(choiceId: string, question: string, options: string[]): Promise<void>
     resolve(choiceId: string, selected: string): Promise<void>
+    cancel(choiceId: string): Promise<void>
     get(id: string): Promise<{ question: string; options: string[] } | null>
   }
   /** Session mutating commands backing the rename/archive/prompt/cancel/page routes. */
@@ -278,6 +279,15 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         if (pending === null) throw new AmadeusRequestError(404, 'not_found')
         if (!pending.options.includes(body.selected)) return badRequest()
         await choices.resolve(choiceId, body.selected)
+        return json({ ok: true })
+      }),
+      route('POST', '/choice/cancel', async request => {
+        const body = readObject(request)
+        const choiceId = id(body.choiceId)
+        const choices = options.choices ?? unavailable('choices')
+        const pending = await choices.get(choiceId)
+        if (pending === null) throw new AmadeusRequestError(404, 'not_found')
+        await choices.cancel(choiceId)
         return json({ ok: true })
       }),
       route('POST', '/tag/ensure', request => {

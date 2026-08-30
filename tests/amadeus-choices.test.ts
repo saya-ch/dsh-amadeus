@@ -52,6 +52,19 @@ describe('choices adapter', () => {
     await expect(a.resolve('nope', 'x')).rejects.toThrow()
   })
 
+  it('cancel rejects a pending wait', async () => {
+    const a = new AmadeusChoicesAdapter({} as any, dir)
+    await a.create('c3', '选哪个', ['A', 'B'])
+    const pending = a.wait('c3')
+    await a.cancel('c3')
+    await expect(pending).rejects.toThrow('choice-cancelled')
+  })
+
+  it('cancel is idempotent for unknown choice', async () => {
+    const a = new AmadeusChoicesAdapter({} as any, dir)
+    await expect(a.cancel('nope')).resolves.toBeUndefined()
+  })
+
   it('installed answerer answers a user-questions/request once the app resolves', async () => {
     const { registered, ctx } = recordingCtx()
     const a = new AmadeusChoicesAdapter(ctx, dir)

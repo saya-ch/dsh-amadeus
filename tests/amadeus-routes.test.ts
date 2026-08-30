@@ -58,6 +58,12 @@ function makeBusiness() {
   const previews = {
     get: vi.fn().mockResolvedValue({ id: 'pv_1', type: 'web', content: 'https://example.test', title: '预览' }),
   }
+  const choices = {
+    create: vi.fn(),
+    resolve: vi.fn(),
+    get: vi.fn().mockResolvedValue({ question: '选吗', options: ['A', 'B'] }),
+    cancel: vi.fn().mockResolvedValue(undefined),
+  }
   const stream = {
     open: vi.fn(async (_id: string, write: (data: string) => void, onFinished?: () => void) => {
       write(JSON.stringify({ type: 'segments', text: '好呀\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]' }))
@@ -65,7 +71,7 @@ function makeBusiness() {
       return () => {}
     }),
   }
-  return { commands, workspaces, previews, stream, business: { commands, workspaces, previews, stream } }
+  return { commands, workspaces, previews, choices, stream, business: { commands, workspaces, previews, choices, stream } }
 }
 
 describe('amadeus extension routes', () => {
@@ -211,5 +217,23 @@ describe('amadeus extension routes', () => {
     const response = await handler({ method: 'GET', pathname: '/stream/s1' })
     expect(response.status).toBe(503)
     expect(JSON.parse(response.body as string)).toEqual({ error: 'amadeus_stream_unavailable' })
+  })
+
+  it('cancels a pending choice by id', async () => {
+    const { choices, business } = makeBusiness()
+    const handler = makeHandler(business)
+    const response = await handler(jsonBody({ method: 'POST', pathname: '/choice/cancel' }, { choiceId: 'cq_1' }))
+    expect(response.status).toBe(200)
+    expect(JSON.parse(response.body as string)).toEqual({ ok: true })
+    expect(choices.cancel).toHaveBeenCalledWith('cq_1')
+  })
+
+  it('returns 404 when cancelling a choice that does not exist', async () => {
+    const { choices, business } = makeBusiness()
+    choices.get.mockResolvedValueOnce(null)
+    const handler = makeHandler(business)
+    const response = await handler(jsonBody({ method: 'POST', pathname: '/choice/cancel' }, { choiceId: 'cq_missing' }))
+    expect(response.status).toBe(404)
+    expect(choices.cancel).not.toHaveBeenCalled()
   })
 })
