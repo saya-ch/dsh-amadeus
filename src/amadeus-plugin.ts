@@ -1,8 +1,14 @@
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { MobileAccessGateway } from './gateway.js'
 import { createMobileAccessService } from './extensions.js'
-import { createAmadeusExtension, type AmadeusGatewayOptions } from './amadeus-extension.js'
+import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSessionSummary } from './amadeus-extension.js'
+import { AmadeusSessionCommands, AmadeusSessionsAdapter, type AmadeusSessionsContext } from './amadeus-sessions.js'
+import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js'
+import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-choices.js'
+import { registerAmadeusTools } from './amadeus-tools.js'
 import { JsonDeviceStore } from './storage.js'
 import { JsonMobileAccessControlStore, MobileAccessGatewayController, type MobileAccessRuntime } from './control.js'
 import { parseControlFile, parseGatewayConfig, type PluginConfig } from './config.js'
@@ -54,6 +60,26 @@ function mapAdminError(error: unknown): HttpError {
   return new HttpError(500, 'internal_error')
 }
 
+/** Fixed first line spoken to the user right after a new session is created (方案 A). */
+export const AMADEUS_OPENING_PROMPT = '你刚在月夜礁石边遇见用户，打个招呼吧，说一句温柔的话'
+
+/** Create an Amadeus session, then immediately deliver the opening line (方案 A). */
+export async function createAmadeusOpeningSession(
+  sessions: AmadeusSessionsAdapter,
+  commands: AmadeusSessionCommands,
+  mode: string,
+  title?: string,
+): Promise<AmadeusSessionSummary> {
+  const created = await sessions.create(mode, title)
+  await commands.prompt(created.id, AMADEUS_OPENING_PROMPT)
+  return created
+}
+
+/** Amadeus business state dir shared by reports, previews and choices. */
+function amadeusStateDir(): string {
+  return join(homedir(), '.dsh', 'amadeus')
+}
+
 /** Mount the independent Amadeus gateway: pairing, sessions, reports, choices. */
 export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   // Make sure the desktop preset exists (fire-and-forget; discovery re-reads).
@@ -63,8 +89,27 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   const amadeusAccess = createMobileAccessService(ctx)
   const upstreamLoginUrl = upstreamAuthenticatedUrl(ctx, resolved.upstreamOrigin)
 
-  // Business adapters are wired later by the sessions plugin; explicit 503 now.
-  const business: AmadeusGatewayOptions = {}
+  // Real business adapters over the DSH Cordis services injected by the host.
+  const stateDir = amadeusStateDir()
+  const sessionsContext = ctx as unknown as AmadeusSessionsContext
+  const sessionsAdapter = new AmadeusSessionsAdapter(sessionsContext)
+  const sessionCommands = new AmadeusSessionCommands(sessionsContext)
+  const reportsAdapter = new AmadeusReportsAdapter(ctx, stateDir)
+  const previewStore = new AmadeusPreviewStore(stateDir)
+  const choicesAdapter = new AmadeusChoicesAdapter(ctx as unknown as AmadeusChoicesContext, stateDir)
+
+  registerAmadeusTools(ctx, reportsAdapter, previewStore)
+  choicesAdapter.install()
+
+  const business: AmadeusGatewayOptions = {
+    sessions: {
+      list: mode => sessionsAdapter.list(mode),
+      create: (mode, title) => createAmadeusOpeningSession(sessionsAdapter, sessionCommands, mode, title),
+      get: id => sessionsAdapter.get(id),
+    },
+    reports: reportsAdapter,
+    choices: choicesAdapter,
+  }
 
   const holder: { gateway?: MobileAccessGateway | undefined } = {}
 
