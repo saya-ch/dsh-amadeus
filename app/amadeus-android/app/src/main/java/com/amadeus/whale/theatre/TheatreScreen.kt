@@ -57,26 +57,32 @@ fun TheatreScreen(
     ) { sprite ->
       renderer.Render(mood = state.mood, sprite = sprite, modifier = Modifier.align(Alignment.BottomCenter))
     }
-    // 对话框层
+    // 底部：输入栏插槽（真实模式用，demo 传空 lambda 不渲染）+ 对话框层
     Column(
       modifier = Modifier
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
-        .padding(16.dp)
-        .clip(RoundedCornerShape(20.dp))
-        .background(Color(0xCC000000))
-        .clickable { viewModel.onTap() }
-        .padding(horizontal = 20.dp, vertical = 16.dp),
+        .padding(16.dp),
     ) {
-      Text(text = state.speaker, color = Color(0xFFFFD6A5), fontSize = 16.sp)
-      Spacer(Modifier.height(6.dp))
-      Typewriter(text = state.dialog, finished = state.typingFinished, modifier = Modifier.fillMaxWidth())
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
+      inputBar { }
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(20.dp))
+          .background(Color(0xCC000000))
+          .clickable { viewModel.onTap() }
+          .padding(horizontal = 20.dp, vertical = 16.dp),
       ) {
-        if (viewModel.hasNext()) Text(text = "▼", color = Color(0x88FFFFFF), fontSize = 14.sp)
+        Text(text = state.speaker, color = Color(0xFFFFD6A5), fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        Typewriter(text = state.dialog, finished = state.typingFinished, modifier = Modifier.fillMaxWidth())
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          if (viewModel.hasNext()) Text(text = "▼", color = Color(0x88FFFFFF), fontSize = 14.sp)
+        }
       }
     }
     // 右上角齿轮
