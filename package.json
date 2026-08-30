@@ -17,6 +17,7 @@
     "lib/**/*.mjs",
     "lib/**/*.d.mts",
     "lib/**/*.map",
+    "lib/client.js",
     "cordis.patch.yml",
     "presets/**/*",
     "README.md"
@@ -24,6 +25,14 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ],
+      "immediately": true
     }
   },
   "scripts": {
