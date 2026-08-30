@@ -1,6 +1,8 @@
 import type { MobileExtensionDefinition, MobileHostRoute, MobileRouteRequest, MobileRouteResponse } from './extensions.js'
+import { Readable } from 'node:stream'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import { ensureAmadeusTag, parseAmadeusSegments, parseAmadeusTag } from './amadeus-tags.js'
+import type { AmadeusPageMessages } from './amadeus-sessions.js'
 
 /** Stable namespace within the Amadeus gateway. */
 export const AMADEUS_EXTENSION_ID = 'amadeus'
@@ -39,6 +41,26 @@ export interface AmadeusGatewayOptions {
     resolve(choiceId: string, selected: string): Promise<void>
     get(id: string): Promise<{ question: string; options: string[] } | null>
   }
+  /** Session mutating commands backing the rename/archive/prompt/cancel/page routes. */
+  readonly commands?: {
+    rename(id: string, title: string): Promise<void>
+    archive(id: string): Promise<void>
+    prompt(id: string, text: string): Promise<void>
+    cancel(id: string): Promise<void>
+    page(id: string, beforeSeq?: number): Promise<AmadeusPageMessages>
+  }
+  /** Workspace listing for the GET /workspaces route. */
+  readonly workspaces?: {
+    list(): Promise<Array<{ id: string; path: string; title: string }>>
+  }
+  /** Persisted previews for the GET /previews/:id route. */
+  readonly previews?: {
+    get(id: string): Promise<{ id: string; type: string; content: string; title: string } | null>
+  }
+  /** Session follow stream bridge for the GET /stream/:sessionId SSE route. */
+  readonly stream?: {
+    open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void>
+  }
 }
 
 const MAX_BODY_BYTES = 64 * 1024
@@ -74,7 +96,7 @@ function id(value: unknown): string {
   return value
 }
 
-function unavailable(capability: 'sessions' | 'reports' | 'choices'): never {
+function unavailable(capability: 'sessions' | 'reports' | 'choices' | 'commands' | 'workspaces' | 'previews' | 'stream'): never {
   throw new AmadeusRequestError(503, `amadeus_${capability}_unavailable`)
 }
 
@@ -129,6 +151,91 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const sessions = options.sessions ?? unavailable('sessions')
         return json({ session: await sessions.create(AMADEUS_MODE_ID, sessionTitle) }, 201)
       }),
+      route('POST', '/sessions', async request => {
+        const tail = request.pathname.slice('/sessions/'.length)
+        const slash = tail.indexOf('/')
+        if (slash < 0) return badRequest()
+        const sessionId = id(tail.slice(0, slash))
+        const action = tail.slice(slash + 1)
+        const commands = options.commands ?? unavailable('commands')
+        if (action === 'rename') {
+          const body = readObject(request)
+          const sessionTitle = title(body.title)
+          if (sessionTitle === undefined || sessionTitle.length === 0) return badRequest()
+          await commands.rename(sessionId, sessionTitle)
+        } else if (action === 'archive') {
+          await commands.archive(sessionId)
+        } else if (action === 'prompt') {
+          const body = readObject(request)
+          if (typeof body.text !== 'string' || body.text.length === 0 || body.text.length > 8192) return badRequest()
+          await commands.prompt(sessionId, body.text)
+        } else if (action === 'cancel') {
+          await commands.cancel(sessionId)
+        } else {
+          return badRequest()
+        }
+        return json({ ok: true })
+      }, 'prefix'),
+      route('GET', '/sessions', async request => {
+        const tail = request.pathname.slice('/sessions/'.length)
+        const slash = tail.indexOf('/')
+        if (slash < 0 || tail.slice(slash + 1) !== 'page') return badRequest()
+        const sessionId = id(tail.slice(0, slash))
+        const commands = options.commands ?? unavailable('commands')
+        const rawBefore = request.query.get('beforeSeq')
+        if (rawBefore !== null && !/^\d{1,15}$/u.test(rawBefore)) return badRequest()
+        const beforeSeq = rawBefore === null ? undefined : Number(rawBefore)
+        return json(beforeSeq === undefined ? await commands.page(sessionId) : await commands.page(sessionId, beforeSeq))
+      }, 'prefix'),
+      route('GET', '/workspaces', async () => {
+        const workspaces = options.workspaces ?? unavailable('workspaces')
+        return json({ workspaces: await workspaces.list() })
+      }),
+      route('GET', '/previews', async request => {
+        const previewId = id(request.pathname.slice('/previews/'.length))
+        const previews = options.previews ?? unavailable('previews')
+        const preview = await previews.get(previewId)
+        if (preview === null) throw new AmadeusRequestError(404, 'not_found')
+        return json(preview)
+      }, 'prefix'),
+      route('GET', '/stream', async request => {
+        const sessionId = id(request.pathname.slice('/stream/'.length))
+        const stream = options.stream ?? unavailable('stream')
+        const source = new Readable({ read() {} })
+        let closed = false
+        let heartbeat: NodeJS.Timeout | undefined
+        let hubClose: (() => void) | undefined
+        const push = (chunk: string): void => {
+          if (!closed && !source.destroyed) source.push(chunk)
+        }
+        const writeFrame = (data: string): void => {
+          push(`data: ${data}\n\n`)
+        }
+        const endStream = (): void => {
+          if (closed) return
+          closed = true
+          if (heartbeat !== undefined) clearInterval(heartbeat)
+          request.signal.removeEventListener('abort', onAbort)
+          if (hubClose !== undefined) void hubClose()
+          if (!source.destroyed) source.push(null)
+        }
+        const onAbort = (): void => endStream()
+        request.signal.addEventListener('abort', onAbort, { once: true })
+        push('retry: 2000\n')
+        heartbeat = setInterval(() => push(': heartbeat\n\n'), 15_000)
+        heartbeat.unref()
+        source.once('close', endStream)
+        void stream.open(sessionId, writeFrame, endStream).then(close => {
+          hubClose = close
+          if (closed) void close()
+        }).catch(() => endStream())
+        return {
+          status: 200,
+          contentType: 'text/event-stream; charset=utf-8',
+          headers: { 'Cache-Control': 'no-store' },
+          body: source,
+        }
+      }, 'prefix'),
       route('GET', '/reports', async () => {
         const reports = options.reports ?? unavailable('reports')
         return json({ reports: await reports.list() })

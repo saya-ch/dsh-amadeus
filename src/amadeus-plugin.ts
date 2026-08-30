@@ -8,6 +8,7 @@ import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSession
 import { AmadeusSessionCommands, AmadeusSessionsAdapter, type AmadeusSessionsContext } from './amadeus-sessions.js'
 import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js'
 import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-choices.js'
+import { AmadeusStreamHub } from './amadeus-stream.js'
 import { registerAmadeusTools } from './amadeus-tools.js'
 import { JsonDeviceStore } from './storage.js'
 import { JsonMobileAccessControlStore, MobileAccessGatewayController, type MobileAccessRuntime } from './control.js'
@@ -97,6 +98,7 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   const reportsAdapter = new AmadeusReportsAdapter(ctx, stateDir)
   const previewStore = new AmadeusPreviewStore(stateDir)
   const choicesAdapter = new AmadeusChoicesAdapter(ctx as unknown as AmadeusChoicesContext, stateDir)
+  const streamHub = new AmadeusStreamHub(sessionsContext)
 
   registerAmadeusTools(ctx, reportsAdapter, previewStore)
   choicesAdapter.install()
@@ -109,6 +111,21 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     },
     reports: reportsAdapter,
     choices: choicesAdapter,
+    commands: sessionCommands,
+    workspaces: {
+      list: async () => {
+        const records = await sessionsContext.workspaceRegistry.list()
+        return records.map(record => ({
+          id: record.header.id,
+          path: record.header.path ?? '',
+          title: record.header.title ?? '',
+        }))
+      },
+    },
+    previews: previewStore,
+    stream: {
+      open: (sessionId, write, onFinished) => streamHub.open(sessionId, write, onFinished),
+    },
   }
 
   const holder: { gateway?: MobileAccessGateway | undefined } = {}

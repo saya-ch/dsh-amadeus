@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import type { AmadeusGatewayOptions, AmadeusSessionSummary } from './amadeus-extension.js'
+import type { AmadeusSessionFollowFrame } from './amadeus-stream.js'
 
 /** Structural surface of the DSH Cordis services the Amadeus adapter consumes. */
 export interface AmadeusSessionsContext {
@@ -16,8 +17,12 @@ export interface AmadeusSessionsContext {
     cancel(req: { sessionId: string }): Promise<{ accepted: boolean }>
     prompt(req: { requestId: string; sessionId: string; mode: 'queue' | 'steer'; content: Array<{ type: 'text'; text: string }> }): Promise<{ accepted: boolean }>
     page(req: { address: { kind: 'session'; sessionId: string }; throughSeq: number; beforeSeq?: number; maxMessages?: number }): Promise<{ records: Array<{ type: 'event'; event: { type: string; data: unknown } }>; hasMore: boolean }>
+    follow(req: { address: { kind: 'session'; sessionId: string } }): AsyncIterable<AmadeusSessionFollowFrame>
   }
-  readonly workspaceRegistry: { archiveSession(sessionId: string): Promise<void> }
+  readonly workspaceRegistry: {
+    archiveSession(sessionId: string): Promise<void>
+    list(): Promise<Array<{ header: { id: string; path?: string; title?: string } }>>
+  }
 }
 
 /** Sessions adapter for the Amadeus gateway; filters DSH sessions by agentPreset. */
