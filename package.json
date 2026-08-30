@@ -17,6 +17,7 @@
     "lib/**/*.mjs",
     "lib/**/*.d.mts",
     "lib/**/*.map",
+    "cordis.patch.yml",
     "README.md"
   ],
   "dsh": {
@@ -39,8 +40,20 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
+    "dsh-mobile": "^0.3.3",
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-host-webserver": "0.1.0-rc.5 || 0.1.0-rc.6 || 0.1.0-rc.7 || 0.1.1-rc.2 || 0.1.2-alpha.1"
+  },
+  "peerDependenciesMeta": {
+    "dsh-mobile": {
+      "optional": true
+    },
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-host-webserver": {
+      "optional": true
+    }
   },
   "dependencies": {
     "bonjour-service": "^1.4.4",
@@ -48,12 +61,14 @@
     "selfsigned": "^5.5.0"
   },
   "devDependencies": {
+    "dsh-mobile": "0.3.3",
+    "@deepseek-ai/dsh-llm": "^0.1.1-rc.2",
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-host-webserver": "^0.1.1-rc.2",
     "@types/node": "^24.3.0",
     "@types/qrcode": "^1.5.5",
-    "@types/react": "^19.2.18",
-    "react": "^19.2.8",
+    "@types/react": "^18.3.27",
+    "react": "^18.3.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
