@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { AmadeusChoicesAdapter, AskUserQuestionAbortedError } from '../src/amadeus-choices.js'
 
 let dir: string
@@ -22,7 +22,7 @@ async function persistedChoiceId(dir: string): Promise<string> {
 function recordingCtx(): { registered: Array<(request: any) => any>; ctx: any } {
   const registered: Array<(request: any) => any> = []
   const ctx = {
-    waterfall(_thisArg: unknown, name: string, handler?: (request: any) => any) {
+    on(name: string, handler?: (request: any) => any) {
       if (name === 'user-questions/request' && typeof handler === 'function') registered.push(handler)
     },
   }
@@ -85,5 +85,27 @@ describe('choices adapter', () => {
     const pending = registered[0]!(request)
     controller.abort()
     await expect(pending).rejects.toThrow(AskUserQuestionAbortedError)
+  })
+
+  it('answers a dispatched waterfall through the real cordis Context.on registration', async () => {
+    const { Context } = await import('@deepseek-ai/cordis')
+    const context = new Context()
+    const a = new AmadeusChoicesAdapter(context as any, dir)
+    a.install()
+
+    const fallback = vi.fn(async () => { throw new Error('fallback should not be reached') })
+    const request = {
+      agent: 'amadeus',
+      signal: new AbortController().signal,
+      questions: [{ id: 'q10', question: '要继续吗？', options: [{ label: '继续' }, { label: '停下' }] }],
+    }
+    const pending = (context as any).waterfall('user-questions/request', request, fallback)
+    const choiceId = await persistedChoiceId(dir)
+    await a.resolve(choiceId, '继续')
+
+    const answer = await pending
+    expect(answer.answers[0]).toEqual({ id: 'q10', selected: ['继续'] })
+    expect(fallback).not.toHaveBeenCalled()
+    await context.fiber.dispose()
   })
 })

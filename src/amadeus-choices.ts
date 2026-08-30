@@ -47,7 +47,7 @@ interface ChoiceMeta {
 
 /** Structural surface of the DSH context the choices adapter consumes. */
 export interface AmadeusChoicesContext {
-  waterfall(...args: unknown[]): unknown
+  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown): unknown
 }
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
@@ -138,7 +138,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
 
   /** Register the ask_user_question answerer on the `user-questions/request` waterfall. */
   install(): void {
-    this.ctx.waterfall(undefined, 'user-questions/request', (request: AmadeusUserQuestionRequest) => {
+    this.ctx.on('user-questions/request', (request: AmadeusUserQuestionRequest) => {
       return this.answerRequest(request)
     })
   }
