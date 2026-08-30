@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto'
 import type { AmadeusReportsAdapter, AmadeusPreviewStore } from './amadeus-reports.js'
 
+const PREVIEW_TYPES = new Set<string>(['web', 'image', 'code', 'table'])
+
 export function registerAmadeusTools(ctx: any, reports: AmadeusReportsAdapter, previews: AmadeusPreviewStore): void {
   ctx.tools.register({
     name: 'save_report',
@@ -26,6 +28,9 @@ export function registerAmadeusTools(ctx: any, reports: AmadeusReportsAdapter, p
     },
     output: { schema: { type: 'object' } },
     async execute(args: { title: string; type: string; content: string }) {
+      if (!PREVIEW_TYPES.has(args.type)) {
+        return { error: `unsupported preview type: ${args.type} (expected web|image|code|table)` }
+      }
       const id = `pv_${randomBytes(4).toString('hex')}`
       await previews.save({ id, type: args.type, content: args.content, title: args.title, createdAt: Date.now() })
       return { windowId: id, title: args.title }

@@ -45,6 +45,7 @@ async function streamText(body: string | Uint8Array | Readable): Promise<string>
 
 function makeBusiness() {
   const commands = {
+    assertOwned: vi.fn().mockResolvedValue(true),
     rename: vi.fn().mockResolvedValue(undefined),
     archive: vi.fn().mockResolvedValue(undefined),
     prompt: vi.fn().mockResolvedValue(undefined),
@@ -107,6 +108,48 @@ describe('amadeus extension routes', () => {
     expect(commands.prompt).not.toHaveBeenCalled()
   })
 
+  it('creates a session with an optional workspaceId', async () => {
+    const sessions = {
+      list: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 's1', title: '新会话', mode: 'amadeus', updatedAt: 1 }),
+      get: vi.fn(),
+    }
+    const handler = makeHandler({ sessions })
+    const response = await handler(jsonBody({ method: 'POST', pathname: '/sessions' }, { title: '标题', workspaceId: 'w1' }))
+    expect(response.status).toBe(201)
+    expect(sessions.create).toHaveBeenCalledWith('amadeus', '标题', 'w1')
+  })
+
+  it('returns 404 when a session command targets a non-amadeus session', async () => {
+    const { commands, business } = makeBusiness()
+    commands.assertOwned.mockResolvedValue(false)
+    const handler = makeHandler(business)
+    const rename = await handler(jsonBody({ method: 'POST', pathname: '/sessions/s1/rename' }, { title: 'x' }))
+    expect(rename.status).toBe(404)
+    expect(commands.rename).not.toHaveBeenCalled()
+    const prompt = await handler(jsonBody({ method: 'POST', pathname: '/sessions/s1/prompt' }, { text: 'x' }))
+    expect(prompt.status).toBe(404)
+    expect(commands.prompt).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 for page on a non-amadeus session', async () => {
+    const { commands, business } = makeBusiness()
+    commands.assertOwned.mockResolvedValueOnce(false)
+    const handler = makeHandler(business)
+    const response = await handler({ method: 'GET', pathname: '/sessions/s1/page' })
+    expect(response.status).toBe(404)
+    expect(commands.page).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 for the stream route on a non-amadeus session', async () => {
+    const { commands, stream, business } = makeBusiness()
+    commands.assertOwned.mockResolvedValueOnce(false)
+    const handler = makeHandler(business)
+    const response = await handler({ method: 'GET', pathname: '/stream/s1' })
+    expect(response.status).toBe(404)
+    expect(stream.open).not.toHaveBeenCalled()
+  })
+
   it('pages session history with an optional beforeSeq', async () => {
     const { commands, business } = makeBusiness()
     const handler = makeHandler(business)
@@ -134,6 +177,20 @@ describe('amadeus extension routes', () => {
     expect(JSON.parse(response.body as string)).toEqual({ id: 'pv_1', type: 'web', content: 'https://example.test', title: '预览' })
     previews.get.mockResolvedValueOnce(null)
     const missing = await handler({ method: 'GET', pathname: '/previews/pv_missing' })
+    expect(missing.status).toBe(404)
+  })
+
+  it('returns a report by id (flat payload)', async () => {
+    const reports = {
+      list: vi.fn(),
+      save: vi.fn(),
+      get: vi.fn().mockResolvedValue({ id: 'rpt_1', title: '报告', markdown: '# hi', createdAt: 1 }),
+    }
+    const handler = makeHandler({ reports })
+    const response = await handler({ method: 'GET', pathname: '/reports/rpt_1' })
+    expect(JSON.parse(response.body as string)).toEqual({ id: 'rpt_1', title: '报告', markdown: '# hi', createdAt: 1 })
+    reports.get.mockResolvedValueOnce(null)
+    const missing = await handler({ method: 'GET', pathname: '/reports/rpt_missing' })
     expect(missing.status).toBe(404)
   })
 

@@ -40,8 +40,11 @@ export class AmadeusSessionsAdapter implements NonNullable<AmadeusGatewayOptions
     return out
   }
 
-  async create(mode: string, title?: string): Promise<AmadeusSessionSummary> {
-    const { sessionId } = await this.ctx.sessionController.create({ agentPreset: this.ctx.modeId })
+  async create(mode: string, title?: string, workspaceId?: string): Promise<AmadeusSessionSummary> {
+    const { sessionId } = await this.ctx.sessionController.create({
+      agentPreset: this.ctx.modeId,
+      ...(workspaceId === undefined ? {} : { workspaceId }),
+    })
     return { id: sessionId, title: title ?? '新会话', mode: mode as typeof AMADEUS_MODE_ID, updatedAt: Date.now() }
   }
 
@@ -63,23 +66,38 @@ export interface AmadeusPageMessages {
 export class AmadeusSessionCommands {
   constructor(private readonly ctx: AmadeusSessionsContext) {}
 
+  /** Whether a session exists and belongs to the amadeus mode preset. */
+  async assertOwned(id: string): Promise<boolean> {
+    const records = await this.ctx.sessionQuery.listSessions()
+    return records.some(r => r.header.id === id && r.header.agentPreset === this.ctx.modeId)
+  }
+
+  private async requireOwned(id: string): Promise<void> {
+    if (!(await this.assertOwned(id))) throw new Error(`session ${id} is not an amadeus session`)
+  }
+
   async rename(id: string, title: string): Promise<void> {
+    await this.requireOwned(id)
     await this.ctx.sessionController.rename({ sessionId: id, title })
   }
 
   async archive(id: string): Promise<void> {
+    await this.requireOwned(id)
     await this.ctx.workspaceRegistry.archiveSession(id)
   }
 
   async prompt(id: string, text: string): Promise<void> {
+    await this.requireOwned(id)
     await this.ctx.sessionController.prompt({ requestId: `amw-${randomUUID()}`, sessionId: id, mode: 'queue', content: [{ type: 'text', text }] })
   }
 
   async cancel(id: string): Promise<void> {
+    await this.requireOwned(id)
     await this.ctx.sessionController.cancel({ sessionId: id })
   }
 
   async page(id: string, beforeSeq?: number): Promise<AmadeusPageMessages> {
+    await this.requireOwned(id)
     const res = await this.ctx.sessionController.page({
       address: { kind: 'session', sessionId: id },
       throughSeq: Number.MAX_SAFE_INTEGER,
@@ -87,6 +105,7 @@ export class AmadeusSessionCommands {
       maxMessages: 50,
     })
     const messages = res.records.flatMap((rec): Array<{ role: 'user' | 'assistant' | 'tool'; text: string }> => {
+      if (rec.type !== 'event') return []
       const event = rec.event
       const data = event.data as { text?: string; message?: { text?: string }; name?: string }
       if (event.type === 'user/message') return [{ role: 'user', text: data.text ?? '' }]

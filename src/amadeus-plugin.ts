@@ -71,10 +71,45 @@ export async function createAmadeusOpeningSession(
   commands: AmadeusSessionCommands,
   mode: string,
   title?: string,
+  workspaceId?: string,
 ): Promise<AmadeusSessionSummary> {
-  const created = await sessions.create(mode, title)
+  const created = await sessions.create(mode, title, workspaceId)
   await commands.prompt(created.id, AMADEUS_OPENING_PROMPT)
   return created
+}
+
+/**
+ * Bridge an SSE stream to the choices adapter: register the stream's write
+ * function for the session before pumping and unregister once it ends (either
+ * naturally or via the returned close handle).
+ */
+export function bridgeAmadeusChoicesToStream(
+  choices: { registerStream(sessionId: string, push: (frame: object) => void): () => void },
+  stream: { open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void> },
+): (sessionId: string, write: (data: string) => void, onFinished?: () => void) => Promise<() => void> {
+  return async (sessionId, write, onFinished) => {
+    let closed = false
+    const unregister = choices.registerStream(sessionId, frame => write(JSON.stringify(frame)))
+    let close: (() => void) | undefined
+    try {
+      close = await stream.open(sessionId, write, () => {
+        if (closed) return
+        closed = true
+        unregister()
+        onFinished?.()
+      })
+    } catch (error) {
+      closed = true
+      unregister()
+      throw error
+    }
+    return () => {
+      if (closed) return
+      closed = true
+      unregister()
+      close?.()
+    }
+  }
 }
 
 /** Amadeus business state dir shared by reports, previews and choices. */
@@ -107,7 +142,7 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   const business: AmadeusGatewayOptions = {
     sessions: {
       list: mode => sessionsAdapter.list(mode),
-      create: (mode, title) => createAmadeusOpeningSession(sessionsAdapter, sessionCommands, mode, title),
+      create: (mode, title, workspaceId) => createAmadeusOpeningSession(sessionsAdapter, sessionCommands, mode, title, workspaceId),
       get: id => sessionsAdapter.get(id),
     },
     reports: reportsAdapter,
@@ -124,9 +159,7 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
       },
     },
     previews: previewStore,
-    stream: {
-      open: (sessionId, write, onFinished) => streamHub.open(sessionId, write, onFinished),
-    },
+    stream: { open: bridgeAmadeusChoicesToStream(choicesAdapter, streamHub) },
   }
 
   const holder: { gateway?: MobileAccessGateway | undefined } = {}

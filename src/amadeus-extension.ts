@@ -28,7 +28,7 @@ export interface AmadeusReport {
 export interface AmadeusGatewayOptions {
   readonly sessions?: {
     list(mode: string): Promise<AmadeusSessionSummary[]>
-    create(mode: string, title?: string): Promise<AmadeusSessionSummary>
+    create(mode: string, title?: string, workspaceId?: string): Promise<AmadeusSessionSummary>
     get(id: string): Promise<AmadeusSessionSummary | null>
   }
   readonly reports?: {
@@ -43,6 +43,7 @@ export interface AmadeusGatewayOptions {
   }
   /** Session mutating commands backing the rename/archive/prompt/cancel/page routes. */
   readonly commands?: {
+    assertOwned(id: string): Promise<boolean>
     rename(id: string, title: string): Promise<void>
     archive(id: string): Promise<void>
     prompt(id: string, text: string): Promise<void>
@@ -88,6 +89,12 @@ function readObject(request: MobileRouteRequest): Record<string, unknown> {
 function title(value: unknown): string | undefined {
   if (value === undefined) return undefined
   if (typeof value !== 'string' || value.length > 200) return badRequest()
+  return value
+}
+
+function workspaceId(value: unknown): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length === 0 || value.length > 128) return badRequest()
   return value
 }
 
@@ -148,8 +155,9 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const body = readObject(request)
         if (body.mode !== undefined && body.mode !== AMADEUS_MODE_ID) return badRequest()
         const sessionTitle = title(body.title)
+        const sessionWorkspaceId = workspaceId(body.workspaceId)
         const sessions = options.sessions ?? unavailable('sessions')
-        return json({ session: await sessions.create(AMADEUS_MODE_ID, sessionTitle) }, 201)
+        return json({ session: await sessions.create(AMADEUS_MODE_ID, sessionTitle, sessionWorkspaceId) }, 201)
       }),
       route('POST', '/sessions', async request => {
         const tail = request.pathname.slice('/sessions/'.length)
@@ -158,6 +166,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const sessionId = id(tail.slice(0, slash))
         const action = tail.slice(slash + 1)
         const commands = options.commands ?? unavailable('commands')
+        if (!(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
         if (action === 'rename') {
           const body = readObject(request)
           const sessionTitle = title(body.title)
@@ -182,6 +191,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         if (slash < 0 || tail.slice(slash + 1) !== 'page') return badRequest()
         const sessionId = id(tail.slice(0, slash))
         const commands = options.commands ?? unavailable('commands')
+        if (!(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
         const rawBefore = request.query.get('beforeSeq')
         if (rawBefore !== null && !/^\d{1,15}$/u.test(rawBefore)) return badRequest()
         const beforeSeq = rawBefore === null ? undefined : Number(rawBefore)
@@ -200,6 +210,8 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
       }, 'prefix'),
       route('GET', '/stream', async request => {
         const sessionId = id(request.pathname.slice('/stream/'.length))
+        const commands = options.commands
+        if (commands !== undefined && !(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
         const stream = options.stream ?? unavailable('stream')
         const source = new Readable({ read() {} })
         let closed = false
@@ -245,7 +257,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const reports = options.reports ?? unavailable('reports')
         const report = await reports.get(reportId)
         if (report === null) throw new AmadeusRequestError(404, 'not_found')
-        return json({ report })
+        return json(report)
       }, 'prefix'),
       route('POST', '/reports', async request => {
         const body = readObject(request)

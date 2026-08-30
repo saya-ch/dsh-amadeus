@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { AmadeusGatewayOptions } from './amadeus-extension.js'
 
@@ -20,16 +21,25 @@ export interface AmadeusPreviewRecord {
 }
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
+  let raw: string
   try {
-    return JSON.parse(await readFile(file, 'utf8')) as T
+    raw = await readFile(file, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return fallback
+    throw error
+  }
+  try {
+    return JSON.parse(raw) as T
   } catch {
-    return fallback
+    throw new Error(`corrupt json at ${file}`)
   }
 }
 
 async function writeJson(file: string, value: unknown): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
-  await writeFile(file, JSON.stringify(value, null, 2))
+  const tmp = `${file}.tmp-${randomUUID()}`
+  await writeFile(tmp, JSON.stringify(value, null, 2))
+  await rename(tmp, file)
 }
 
 /** Reports adapter for the Amadeus gateway; JSON persistence under a state dir. */

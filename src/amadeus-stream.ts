@@ -35,10 +35,9 @@ const ENDED_REASON_SESSION = 'session_ended'
  * `open` pumps the follow stream and writes one `data:` payload per frame:
  *   - assistant/message text is re-parsed into segments (`句\n[[AMW:...]]`), one
  *     `segments` frame per sentence, preserving the original tagged raw text.
- *   - a `snapshot` frame folds in ONLY the latest assistant/message record as
- *     segments (the App already loaded full history via `page`, so folding
- *     everything would duplicate; the latest record represents the current
- *     state that the App then streams forward from).
+ *   - snapshot records are deliberately NOT folded: the App already loaded the
+ *     full history (and its latest state) via `page` before opening the stream,
+ *     so folding them would duplicate the current screen.
  *   - a segment whose tag opens a `choice` window is emitted as a `choice` frame
  *     (choiceId/question/options) instead, matching the App contract.
  *   - the stream finishes with an `ended` frame when the session ends or the
@@ -70,8 +69,8 @@ export class AmadeusStreamHub {
           if (closed || next.done) break
           const frame = next.value
           if (frame.type === 'snapshot') {
-            const latest = AmadeusStreamHub.latestAssistantEvent(frame.records ?? [])
-            if (latest !== undefined) this.emitText(latest, write)
+            // The App already loaded full history via `page`; folding the
+            // snapshot's records here would duplicate the current state.
             continue
           }
           if (frame.type !== 'event' || frame.event === undefined) continue
@@ -107,14 +106,6 @@ export class AmadeusStreamHub {
     for (const segment of segments) {
       write(JSON.stringify(this.payload(segment)))
     }
-  }
-
-  private static latestAssistantEvent(records: ReadonlyArray<AmadeusSessionSnapshotRecord>): AmadeusSessionFollowEvent | undefined {
-    for (let i = records.length - 1; i >= 0; i--) {
-      const event = records[i]?.event
-      if (event?.type === 'assistant/message') return event
-    }
-    return undefined
   }
 
   private payload(segment: AmadeusSegment): Record<string, unknown> {

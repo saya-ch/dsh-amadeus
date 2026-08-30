@@ -164,14 +164,14 @@ describe('Amadeus mobile extension routes', () => {
     expectJson(await call(extension, 'GET', '/sessions'), 200, { sessions: [session] })
     expect(sessions.list).toHaveBeenCalledExactlyOnceWith('amadeus')
     expectJson(await call(extension, 'POST', '/sessions', { body: encoded({ mode: 'amadeus', title: 'My saved session' }) }), 201, { session })
-    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', 'My saved session')
+    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', 'My saved session', undefined)
     expect(sessions.get).not.toHaveBeenCalled()
   })
 
   it('passes an omitted title as undefined without inventing a saved session', async () => {
     const sessions = sessionAdapter()
     expectJson(await call(createAmadeusExtension({ sessions }), 'POST', '/sessions', { body: encoded({}) }), 201, { session })
-    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', undefined)
+    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', undefined, undefined)
   })
 
   it.each([42, null, 'x'.repeat(201)])('rejects invalid session titles before creation: %j', async title => {
@@ -298,7 +298,7 @@ describe('Amadeus in the real DSH Mobile registry', () => {
     const reports = reportAdapter()
     service.registerExtension(createAmadeusExtension({ reports }))
     const response = await service.route('amadeus', 'GET', '/reports/report_fixture', request('GET', '/reports/report_fixture'))
-    expectJson(response, 200, { report })
+    expectJson(response, 200, report)
     expect(reports.get).toHaveBeenCalledExactlyOnceWith('report_fixture')
   })
 

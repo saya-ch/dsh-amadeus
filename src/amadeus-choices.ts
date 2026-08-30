@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { randomBytes, randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { AmadeusGatewayOptions } from './amadeus-extension.js'
 
@@ -7,15 +7,15 @@ import type { AmadeusGatewayOptions } from './amadeus-extension.js'
 export interface AmadeusUserQuestion {
   readonly id: string
   readonly question: string
-  readonly options?: Array<{ label: string }>
+  readonly options?: Array<{ label: string; description?: string }>
   readonly multiSelect?: boolean
 }
 
 /** Payload of the `user-questions/request` waterfall dispatched by DSH. */
 export interface AmadeusUserQuestionRequest {
   readonly questions: AmadeusUserQuestion[]
-  readonly agent: string
-  readonly signal: AbortSignal
+  readonly agent?: { readonly session?: { readonly id?: string } } | string
+  readonly signal?: AbortSignal
 }
 
 /** Answer returned to the ask_user_question caller once the app resolves. */
@@ -47,20 +47,30 @@ interface ChoiceMeta {
 
 /** Structural surface of the DSH context the choices adapter consumes. */
 export interface AmadeusChoicesContext {
-  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown): unknown
+  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown, options?: { global?: boolean }): unknown
+  readonly logger?: { warn(message: string): void }
 }
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
+  let raw: string
   try {
-    return JSON.parse(await readFile(file, 'utf8')) as T
+    raw = await readFile(file, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return fallback
+    throw error
+  }
+  try {
+    return JSON.parse(raw) as T
   } catch {
-    return fallback
+    throw new Error(`corrupt json at ${file}`)
   }
 }
 
 async function writeJson(file: string, value: unknown): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
-  await writeFile(file, JSON.stringify(value, null, 2))
+  const tmp = `${file}.tmp-${randomUUID()}`
+  await writeFile(tmp, JSON.stringify(value, null, 2))
+  await rename(tmp, file)
 }
 
 /** Choices adapter for the Amadeus gateway; metadata persists, resolvers do not. */
@@ -68,11 +78,20 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
   private readonly pending = new Map<string, PendingChoice>()
   private readonly meta = new Map<string, ChoiceMeta>()
   private readonly abortCleanups = new Map<string, () => void>()
+  private readonly streams = new Map<string, (frame: object) => void>()
 
   constructor(private readonly ctx: AmadeusChoicesContext, private readonly dir: string) {}
 
   private file(): string {
     return join(this.dir, 'choices.json')
+  }
+
+  /** Register the SSE write function for one active session; returns unregister. */
+  registerStream(sessionId: string, push: (frame: object) => void): () => void {
+    this.streams.set(sessionId, push)
+    return () => {
+      if (this.streams.get(sessionId) === push) this.streams.delete(sessionId)
+    }
   }
 
   async create(choiceId: string, question: string, options: string[]): Promise<void> {
@@ -127,6 +146,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
     const choiceId = `cq_${randomBytes(4).toString('hex')}`
     const options = question.options?.map(option => option.label) ?? []
     await this.create(choiceId, question.question, options)
+    this.pushChoice(choiceId, question, request.agent)
     try {
       const answer = await this.wait(choiceId, request.signal)
       return { answers: [{ id: question.id, selected: [...answer.answers[0]!.selected] }] }
@@ -136,11 +156,39 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
     }
   }
 
+  /** Push a choice frame to the session's SSE stream, if one is registered. */
+  private pushChoice(choiceId: string, question: AmadeusUserQuestion, agent: unknown): void {
+    const sessionId = AmadeusChoicesAdapter.sessionIdOf(agent)
+    const push = sessionId === undefined ? undefined : this.streams.get(sessionId)
+    if (push !== undefined) {
+      push({
+        type: 'choice',
+        choiceId,
+        question: question.question,
+        options: question.options?.map(option => ({
+          label: option.label,
+          ...(option.description === undefined ? {} : { description: option.description }),
+        })) ?? [],
+      })
+      return
+    }
+    this.ctx.logger?.warn(`no stream registered for session ${sessionId ?? 'unknown'}; choice ${choiceId} remains pending`)
+  }
+
+  /** Derive the owning session id from the request agent, if present. */
+  private static sessionIdOf(agent: unknown): string | undefined {
+    if (agent === null || typeof agent !== 'object') return undefined
+    const record = agent as { session?: { id?: unknown }; id?: unknown }
+    if (typeof record.session?.id === 'string') return record.session.id
+    if (typeof record.id === 'string') return record.id
+    return undefined
+  }
+
   /** Register the ask_user_question answerer on the `user-questions/request` waterfall. */
   install(): void {
     this.ctx.on('user-questions/request', (request: AmadeusUserQuestionRequest) => {
       return this.answerRequest(request)
-    })
+    }, { global: true })
   }
 
   private release(choiceId: string, pending: PendingChoice): void {

@@ -113,7 +113,7 @@ describe('stream hub', () => {
     expect(written).toEqual([])
   })
 
-  it('folds the latest assistant record of a snapshot into segment frames', async () => {
+  it('does not fold snapshot records into segments (page is the authoritative latest state)', async () => {
     const snapshot = {
       type: 'snapshot',
       records: [
@@ -127,9 +127,7 @@ describe('stream hub', () => {
     const close = await hub.open('s1', d => written.push(d))
     await flush()
     await close()
-    const segments = written.map(line => JSON.parse(line) as { type: string; text: string }).filter(p => p.type === 'segments')
-    expect(segments).toHaveLength(1)
-    expect(segments[0]!.text).toContain('最新')
+    expect(written.map(line => (JSON.parse(line) as { type: string }).type)).toEqual(['ended'])
   })
 
   it('ignores a snapshot with no assistant records', async () => {

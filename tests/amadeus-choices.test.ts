@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
@@ -19,14 +19,15 @@ async function persistedChoiceId(dir: string): Promise<string> {
   throw new Error('choice not persisted')
 }
 
-function recordingCtx(): { registered: Array<(request: any) => any>; ctx: any } {
+function recordingCtx(): { registered: Array<(request: any) => any>; registeredOptions: any[]; ctx: any } {
   const registered: Array<(request: any) => any> = []
+  const registeredOptions: any[] = []
   const ctx = {
-    on(name: string, handler?: (request: any) => any) {
-      if (name === 'user-questions/request' && typeof handler === 'function') registered.push(handler)
+    on(name: string, handler?: (request: any) => any, options?: any) {
+      if (name === 'user-questions/request' && typeof handler === 'function') { registered.push(handler); registeredOptions.push(options) }
     },
   }
-  return { registered, ctx }
+  return { registered, registeredOptions, ctx }
 }
 
 describe('choices adapter', () => {
@@ -87,6 +88,97 @@ describe('choices adapter', () => {
     await expect(pending).rejects.toThrow(AskUserQuestionAbortedError)
   })
 
+  it('registers the answerer with { global: true } so agent-scoped dispatches still reach it', async () => {
+    const { registeredOptions, ctx } = recordingCtx()
+    const a = new AmadeusChoicesAdapter(ctx, dir)
+    a.install()
+    expect(registeredOptions).toEqual([{ global: true }])
+  })
+
+  it('pushes a choice frame to the stream registered for the request agent session', async () => {
+    const { registered, ctx } = recordingCtx()
+    const a = new AmadeusChoicesAdapter(ctx, dir)
+    a.install()
+    const pushed: any[] = []
+    const unregister = a.registerStream('sess-1', frame => pushed.push(frame))
+
+    const request = {
+      agent: { session: { id: 'sess-1' } },
+      signal: new AbortController().signal,
+      questions: [{ id: 'q8', question: '要继续吗？', options: [{ label: '继续', description: '保持节奏' }, { label: '停下' }] }],
+    }
+    const pending = registered[0]!(request)
+    const choiceId = await persistedChoiceId(dir)
+    expect(pushed).toHaveLength(1)
+    expect(pushed[0]).toEqual({
+      type: 'choice',
+      choiceId,
+      question: '要继续吗？',
+      options: [{ label: '继续', description: '保持节奏' }, { label: '停下' }],
+    })
+    await a.resolve(choiceId, '继续')
+    await pending
+    unregister()
+  })
+
+  it('unregister stops future choice pushes for a session', async () => {
+    const { registered, ctx } = recordingCtx()
+    const a = new AmadeusChoicesAdapter(ctx, dir)
+    a.install()
+    const pushed: any[] = []
+    const unregister = a.registerStream('sess-1', frame => pushed.push(frame))
+    unregister()
+
+    const request = {
+      agent: { session: { id: 'sess-1' } },
+      signal: new AbortController().signal,
+      questions: [{ id: 'q12', question: '选吗', options: [{ label: 'A' }] }],
+    }
+    const pending = registered[0]!(request)
+    const choiceId = await persistedChoiceId(dir)
+    expect(pushed).toHaveLength(0)
+    await a.resolve(choiceId, 'A')
+    await expect(pending).resolves.toEqual({ answers: [{ id: 'q12', selected: ['A'] }] })
+  })
+
+  it('keeps a question pending when no stream is registered (resolve still answers)', async () => {
+    const { registered, ctx } = recordingCtx()
+    const a = new AmadeusChoicesAdapter(ctx, dir)
+    a.install()
+    const request = {
+      agent: { session: { id: 'no-stream' } },
+      signal: new AbortController().signal,
+      questions: [{ id: 'q13', question: '问', options: [{ label: 'A' }] }],
+    }
+    const pending = registered[0]!(request)
+    const choiceId = await persistedChoiceId(dir)
+    await a.resolve(choiceId, 'A')
+    await expect(pending).resolves.toEqual({ answers: [{ id: 'q13', selected: ['A'] }] })
+  })
+
+  it('answers a scope-filtered waterfall dispatch because the listener is global', async () => {
+    const { Context } = await import('@deepseek-ai/cordis')
+    const context = new Context()
+    const a = new AmadeusChoicesAdapter(context as any, dir)
+    a.install()
+
+    const fallback = vi.fn(async () => { throw new Error('fallback should not be reached') })
+    const scopeThis = { [Context.filter]: () => false }
+    const request = {
+      agent: 'amadeus',
+      signal: new AbortController().signal,
+      questions: [{ id: 'q11', question: '要继续吗？', options: [{ label: '继续' }] }],
+    }
+    const pending = (context as any).waterfall(scopeThis, 'user-questions/request', request, fallback)
+    const choiceId = await persistedChoiceId(dir)
+    await a.resolve(choiceId, '继续')
+
+    const answer = await pending
+    expect(answer.answers[0]).toEqual({ id: 'q11', selected: ['继续'] })
+    expect(fallback).not.toHaveBeenCalled()
+    await context.fiber.dispose()
+  })
+
   it('answers a dispatched waterfall through the real cordis Context.on registration', async () => {
     const { Context } = await import('@deepseek-ai/cordis')
     const context = new Context()
@@ -107,5 +199,13 @@ describe('choices adapter', () => {
     expect(answer.answers[0]).toEqual({ id: 'q10', selected: ['继续'] })
     expect(fallback).not.toHaveBeenCalled()
     await context.fiber.dispose()
+  })
+
+  it('throws on a corrupt choices file instead of silently returning a fallback', async () => {
+    const first = new AmadeusChoicesAdapter({} as any, dir)
+    await first.create('c1', '问', ['A'])
+    await writeFile(join(dir, 'choices.json'), '{not json')
+    const fresh = new AmadeusChoicesAdapter({} as any, dir)
+    await expect(fresh.get('c1')).rejects.toThrow()
   })
 })
