@@ -10,6 +10,7 @@ import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js
 import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-choices.js'
 import { AmadeusStreamHub } from './amadeus-stream.js'
 import { registerAmadeusTools } from './amadeus-tools.js'
+import { AmadeusControlRoutes } from './amadeus-control.js'
 import { JsonDeviceStore } from './storage.js'
 import { JsonMobileAccessControlStore, MobileAccessGatewayController, type MobileAccessRuntime } from './control.js'
 import { parseControlFile, parseGatewayConfig, type PluginConfig } from './config.js'
@@ -154,6 +155,18 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     startRuntime,
   )
 
+  const controlRoutes = new AmadeusControlRoutes({
+    isRunning: () => lanController.isRunning(),
+    gateway: () => {
+      const gateway = holder.gateway
+      return gateway === undefined ? undefined : {
+        origin: gateway.address().origin,
+        devices: () => gateway.devices(),
+        pairingStatus: () => gateway.access.pairingStatus(),
+      }
+    },
+  })
+
   const adminRoute: WebRoute = {
     kind: 'prefix',
     path: LOCAL_ADMIN_PREFIX,
@@ -165,10 +178,8 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
         const control = target.decodedPathname === LOCAL_ADMIN_PREFIX
           || target.decodedPathname === `${LOCAL_ADMIN_PREFIX}/control`
         if (request.method === 'GET' && control) {
-          sendJson(response, 200, {
-            running: lanController.isRunning(),
-            ...(holder.gateway === undefined ? {} : { origin: holder.gateway.address().origin }),
-          }, false)
+          const result = controlRoutes.controlGet()
+          sendJson(response, result.status, JSON.parse(result.body) as unknown, false)
           return
         }
         if (request.method === 'POST' && control) {
