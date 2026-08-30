@@ -6,6 +6,7 @@ import com.amadeus.whale.feed.RealFeed
 import com.amadeus.whale.model.AmadeusMood
 import com.amadeus.whale.model.AmadeusSegment
 import com.amadeus.whale.model.AmadeusTag
+import com.amadeus.whale.model.AmadeusWindow
 import com.amadeus.whale.model.ChoiceOption
 import com.amadeus.whale.network.AmadeusApi
 import com.amadeus.whale.network.AmadeusStream
@@ -70,6 +71,32 @@ class TheatreViewModelTest {
     val v = vm()
     v.showChoice(StreamEvent.Choice("cq_1", "继续吗？", listOf(ChoiceOption("继续"), ChoiceOption("停下"))))
     assertEquals(ChoiceUi("cq_1", "继续吗？", listOf("继续", "停下")), v.uiState.value.choice)
+  }
+
+  @Test fun dismissChoiceClearsChoice() = runTest {
+    val v = vm()
+    v.showChoice(StreamEvent.Choice("cq_1", "继续吗？", listOf(ChoiceOption("继续"))))
+    assertTrue(v.uiState.value.choice != null)
+    v.dismissChoice()
+    assertEquals(null, v.uiState.value.choice)
+  }
+
+  @Test fun loadExposesWindowTypeFromTag() = runTest {
+    val seg = AmadeusSegment(
+      "报告好了",
+      AmadeusTag(window = AmadeusWindow.report, windowId = "rpt_1", windowTitle = "报告"),
+      "rpt_1",
+    )
+    val v = TheatreViewModel(StaticFeed(listOf(seg)), { "palace-night" })
+    v.load()
+    assertEquals("rpt_1", v.uiState.value.windowId)
+    assertEquals(AmadeusWindow.report, v.uiState.value.windowType)
+  }
+
+  @Test fun windowTypeNullWhenNoWindow() = runTest {
+    val v = vm()
+    v.load()
+    assertEquals(null, v.uiState.value.windowType)
   }
 
   @Test fun markIdleSetsIdleAndTypingFinished() = runTest {

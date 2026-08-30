@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ fun TheatreScreen(
   backgroundResolver: (AmadeusMood) -> String = { "palace-night" },
   onOpenSettings: () -> Unit = {},
   onOpenWindow: (windowId: String, type: AmadeusWindow) -> Unit = { _, _ -> },
+  onOpenHistory: (() -> Unit)? = null,
   inputBar: @Composable (send: (String) -> Unit) -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsState()
@@ -90,5 +92,12 @@ fun TheatreScreen(
       onClick = onOpenSettings,
       modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
     ) { Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color.White) }
+    // 左上角历史（真实模式传入非空才显示）
+    if (onOpenHistory != null) {
+      TextButton(
+        onClick = onOpenHistory,
+        modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+      ) { Text(text = "历史", color = Color.White) }
+    }
   }
 }

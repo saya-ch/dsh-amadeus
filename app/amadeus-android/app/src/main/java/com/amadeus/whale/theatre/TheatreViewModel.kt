@@ -6,6 +6,7 @@ import com.amadeus.whale.feed.RealFeed
 import com.amadeus.whale.model.AmadeusMood
 import com.amadeus.whale.model.AmadeusSegment
 import com.amadeus.whale.model.AmadeusSprite
+import com.amadeus.whale.model.AmadeusWindow
 import com.amadeus.whale.network.StreamEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ data class TheatreUiState(
   val dialog: String = "",
   val speaker: String = "鲸鱼娘",
   val windowId: String? = null,
+  val windowType: AmadeusWindow? = null,
   val background: String = "palace-night",
   val typingFinished: Boolean = false,
   val choice: ChoiceUi? = null,
@@ -72,6 +74,11 @@ class TheatreViewModel(
     _uiState.value = _uiState.value.copy(choice = pendingChoice)
   }
 
+  fun dismissChoice() {
+    pendingChoice = null
+    _uiState.value = _uiState.value.copy(choice = null)
+  }
+
   fun markIdle() {
     _uiState.value = _uiState.value.copy(mood = AmadeusMood.idle, typingFinished = true)
   }
@@ -82,7 +89,9 @@ class TheatreViewModel(
 
   private fun toUi(seg: AmadeusSegment) = TheatreUiState(
     mood = seg.tag.mood, sprite = seg.tag.sprite, dialog = seg.dialog,
-    windowId = seg.windowId, background = backgroundResolver(seg.tag.mood),
+    windowId = seg.windowId,
+    windowType = seg.tag.window.takeIf { it != AmadeusWindow.none },
+    background = backgroundResolver(seg.tag.mood),
   )
 
   private fun advance(): Boolean {
