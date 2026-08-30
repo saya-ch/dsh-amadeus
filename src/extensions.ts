@@ -110,12 +110,6 @@ export interface MobileExtensionDefinition extends MobileExtensionManifest {
   readonly routes?: readonly MobileHostRoute[]
 }
 
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    mobileAccess: MobileAccessService
-  }
-}
-
 /** A local extension manifest read from extension.json. */
 export interface LocalExtensionManifest extends MobileExtensionManifest {}
 

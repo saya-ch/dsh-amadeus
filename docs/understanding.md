@@ -1,88 +1,66 @@
-# Amadeus: Whale — 项目理解文档
+# Amadeus: Whale — 设计意图与当前实施状态
 
-> 创建时间: 2026-08-30
-> 基于 DSH Mobile (dsh-mobile@0.3.3) 的 Galgame 化 Amadeus 分支
+## 文档范围
 
-## 1. 项目一句话
+本页记录 2026-08-30 的早期产品方案及其实施限制，不是已完成的功能清单。Amadeus 的目标是独立 Galgame App 与配套 DSH 插件；当前可用范围以 [项目说明](../README.md) 和源码为准。此次修改只处理与 dsh-mobile 共存及启动，不证明真实 DSH 会话、Mode、事件或手机端闭环已经可用。
 
-在 DSH 本体上运行一个高权限的自定义 Mode `amadeus`，配套一个独立的移动端 APP，通过复用 `dsh-mobile` 的安全连接层，让用户可以在手机上以 Galgame 的形式与鲸鱼娘人格的 Agent 对话，且 Agent 的每次公开输出都携带标签驱动 APP 的立绘/音效/动画。
+## 目录
 
-用户当前已验证：PC 上已安装 `dsh-mobile` + `dsh-market`，通过 `cpolar` 远程通道用手机与 DSH 会话，QQ音乐等电脑端能力可被远控。躺在床上不动即可完成操作是核心体验。
+- [当前实施状态](#当前实施状态)
+- [产品设计目标](#产品设计目标)
+- [连接与数据流](#连接与数据流)
+- [后续验收要求](#后续验收要求)
+- [早期方案记录](#早期方案记录)
 
-## 2. 灵感来源
+## 当前实施状态
 
-- **命运石之门 Amadeus**：手机里住着的红莉栖记忆体，AI 形态的助手，核心是“记得你、陪着你、傲娇但可靠”。
-- **鲸鱼娘 Galgame**：用户希望的最终形态不是聊天列表，而是全屏立绘 + 底部对话框，思考过程与工具调用也以 Galgame 演出（气泡、道具卡片、表情切换）的形式呈现。
+`dsh-amadeus` 的 npm 包、App 和 [GitHub 仓库](https://github.com/saya-ch/dsh-amadeus) 保持独立。Host 依赖 `dsh-mobile ^0.3.3`（`>=0.3.3 <0.4.0`）提供的 `mobileAccess` 服务，仅注册 `amadeus` 扩展；网关监听、TLS、设备存储、配对、远程通道和 `mobile` 管理命令都由 dsh-mobile 拥有。
 
-## 3. 整体链路
+扩展业务地址为 `/mobile-access/extensions/amadeus/routes/...`。`/status` 用于说明就绪情况，`/tag/ensure` 用于标签调试；会话、报告和选择回复接口在没有真实后端时返回 `503`，不以内存 Map 模拟成功。路径与方法由 [路由源码](../src/amadeus-extension.ts) 定义。
 
+人格提示词、权限字段和标签函数不等于已接入 DSH。`amadeus` Mode 注册、提示词注入、持久会话、工具交互和事件订阅均未完成真实链路验证。[Compose 与网络调用草稿](../app/amadeus/README.md) 未接入经过验证的完整 Android 工程，本轮未构建或验证 APK，也未验证 SDK、认证模块或 WebSocket 接线。本地被 Git 忽略的 Android 工程不构成干净检出可构建的证据，详见 [构建限制](../app/README.md#界面与构建限制)。
+
+## 产品设计目标
+
+这些目标需要独立实现与验收，不能从插件启动成功推导出来。
+
+### 人格与会话
+
+鲸鱼娘助手的体验目标是“记得你、陪着你、温柔可靠”，通过选档页进入 DSH 持久会话。设计使用 `amadeus` 标识区分会话，并在 DSH 支持的组合点接入人格提示词。高权限及自动审批字段目前仅属于配置草稿；真实权限必须由 DSH 的权限与审批机制落实，不得以提示词或手机演出替代。
+
+### 标签与剧场
+
+公开台词按短句分页，每句附带 `[[AMW:{...}]]` JSON 标签。目标是用 `mood/sprite` 选择立绘，用 `voice/sfx/bgm` 选择音效，并用独立窗口展示报告、预览或用户选项。思考与工具进度的展示应来自明确的公开事件，不把模型内部推理当作台词。
+
+[标签函数](../src/amadeus-tags.ts) 可以独立处理文本，但函数存在不代表模型输出已被自动补全。Android 的标签解析与渲染仍需接入实际事件、资源和音频播放。
+
+### 独立 Android App
+
+目标界面是原生全屏立绘与底部对话框，不是将 dsh-mobile App 改名发布。App 可以参考 dsh-mobile 的连接实现，但需要自己的认证客户端、配对记录、证书信任和会话 Cookie。不同 App 不会自动共享这些凭据。
+
+## 连接与数据流
+
+电脑连接层复用 dsh-mobile 服务，不复制第二个 Gateway。
+
+```text
+Amadeus App（独立配对与凭据，待实现）
+  → dsh-mobile 网关（TLS / Cookie / Origin / CSRF）
+  → /mobile-access/extensions/amadeus/routes/...
+  → Amadeus 扩展路由
+  → 真实 DSH 会话与事件适配（待实现验证）
 ```
-[ Android APP: Amadeus Whale ]  --HTTPS/TLS1.2 + 证书固定+配对-->  [ Host 插件 Gateway (Fork dsh-mobile) ]
-        |                                                             |
-        | 1. GET /amadeus/sessions?mode=amadeus 选档/新建                 | 2. 代理到 DSH 原生 Web/Host
-        | 2. WS /amadeus/session/:id/stream 标签流                    |    -> 转发给 Mode=amadeus 的 LLM
-        | 3. 解析 [[AMW:{...}]] -> 切立绘/音效/打字机                   |
-        v                                                             v
-                                                              [ DSH Core ]
-                                                                Mode: amadeus
-                                                                - sandbox: danger-full-access
-                                                                - autoApproveTools: true
-                                                                - System Prompt: 鲸鱼娘人格 + 标签铁律
-```
 
-## 4. 三大核心模块
+写请求必须满足 dsh-mobile 的同源请求和 CSRF 要求；普通 `OkHttpClient` 并不自动获得登录状态。详细客户端要求见 [App 说明](../app/README.md)。扩展没有 `/session/:id/stream` 或 `/message` 实现，不能把历史示意地址当作可调用接口。
 
-### 4.1 高权限 Mode `amadeus`
+## 后续验收要求
 
-- **注册位置**：插件 `apply(ctx)` 中 `ctx.modes.register({id: 'amadeus'})`，依赖 `dsh-system-prompt` / `dsh-llm` / `dsh-scope`。
-- **权限**：`danger-full-access`，本机用户全权限，工具自动通过审批，保证 Galgame 演出不被打断。
-- **会话隔离**：会话创建时写入 `mode=amadeus` 元数据，查询时过滤。物理存储仍在 DSH 统一的 session 仓库。
-- **输出劫持**：`ctx.llm.on('before_send_to_user')` 强制校验标签，未带则用规则/小模型补标签，保证 APP 永远能解析。
+完整 Galgame MVP 需要分别取得以下证据，不能互相替代。
 
-### 4.2 标签协议 (Tag Protocol)
+1. 同一 profile 加载 dsh-mobile 与 dsh-amadeus，确认只有 dsh-mobile 提供网关与管理服务。
+2. Amadeus App 独立完成 TLS 信任与配对，并验证会话续期、Cookie、Origin、CSRF 和撤销行为。
+3. 接入 DSH 的真实会话、人格配置和公开事件，验证重启后的会话持久性与权限行为。
+4. 从手机创建会话，接收实际回复及工具状态，完成标签分页、立绘与音效展示，并在设备上验收。
 
-模型每次公开文本末尾必须追加单行 JSON 标签块，APP 解析后隐藏：
+## 早期方案记录
 
-```
-公开台词正文...
-[[AMW:{"mood":"shy|think|tool|happy|sad|idle","sprite":"shy|think|tool|wag|gray|smile","voice":"whisper|soft|excited","sfx":"wave|bell|none","bgm":"rain|none"}]]
-```
-
-- `mood/sprite` 驱动立绘切换
-- `voice/sfx/bgm` 驱动音效
-- 思考与工具调用不直接暴露，通过 `mood` 暗示（think/tool）
-- 兜底：Host 层 `fallbackTagger` 根据文本情绪补标签
-
-### 4.3 移动端 APP (参考 dsh-mobile)
-
-- **Fork 路径**：直接 Fork `dsh-mobile/apps/mobile` + `src/gateway.ts` + `src/access.ts` + `src/storage.ts`。
-- **保留**：TLS 证书固定、配对 (扫码/链接/密钥)、发现 (mDNS/UDP)、三远程通道 (tailscale/cpolar/frp) 的 UI 与逻辑。
-- **新增**：
-  - 首页：会话选档页 `GET /amadeus/sessions?mode=amadeus`
-  - 剧场页：全屏立绘层 + 对话框层 + 特效层，WebView 仅负责拉流，解析与渲染在原生层
-  - 打字机、表情切换、道具卡片展开
-
-## 5. 与 dsh-mobile 的关系
-
-- `dsh-mobile` = 通用移动适配 + 安全网关，解决“怎么连上”
-- `dsh-amadeus` = 垂直 Galgame Mode + 定制 APP，解决“连上后怎么演”
-- 连接层代码复用度 >70%，重点改 `mobile.js` 的注入点与 `plugin.ts` 的 Mode 注册。
-
-## 6. 美术与资源 (后续)
-
-- 立绘差分 6 张：base/shy/think/tool/happy/sad/talk，基于同一 seed 用 image2 inpaint 保证一致性
-- 背景 2-3 张：月夜礁石/海底/房间
-- 对话框、道具图标等 UI 素材
-- 资源路径：`app/assets/{sprites,backgrounds,ui}`，`webp` 格式
-
-## 7. MVP 步骤
-
-1.  创建 `dsh-amadeus` 骨架，复用 `dsh-mobile` 的 gateway 与配对
-2.  注册 `amadeus` Mode，写入鲸鱼娘 System Prompt + 标签铁律
-3.  实现标签剥离与立绘切换的最小闭环（手机新建 amadeus 会话 -> 模型输出带标签 -> APP 切图）
-4.  补齐选档页、思考/工具的 Galgame 演出、顺序播放等细节
-
-## 8. 当前状态
-
-- 新项目文件夹 `C:\develop\dsh-amadeus` 已创建
-- 理解文档已落盘，后续开发基于此文档展开
+初始方案提出 Fork `dsh-mobile/apps/mobile` 和网关文件、开启独立端口，并假定存在 `ctx.modes.register`、`before_send_to_user` 及自定义会话 WebSocket。这些是早期设计假设，不是已验证的 DSH API 或当前实施方式。当前修复采用共享电脑连接层、独立 Amadeus 扩展的方案；原方案中的美术、Live2D 和演出设计仍是产品方向，不构成完成声明。

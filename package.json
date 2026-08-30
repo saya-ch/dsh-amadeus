@@ -18,6 +18,7 @@
     "lib/**/*.d.mts",
     "lib/**/*.map",
     "cordis.patch.yml",
+    "presets/**/*",
     "README.md"
   ],
   "dsh": {

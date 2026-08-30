@@ -1,13 +1,6 @@
-# Amadeus: Whale bundle — adds amadeus Mode + /amadeus gateway, does not patch DSH source
-# Isolated from dsh-mobile: separate state/control files and port (3444 vs 3443)
+# Independent Amadeus plugin. DSH Mobile owns the shared authenticated gateway.
 - insert:
     - id: amadeus
       name: dsh-amadeus
-      inject: [webServer, connection]
-      config:
-        stateFile: !!js dshHomePath('amadeus/devices.json')
-        controlFile: !!js dshHomePath('amadeus/control.json')
-        initiallyEnabled: false
-        listenPort: 3444
-        upstreamOrigin: http://127.0.0.1:3080
-        allowedCidrs: [127.0.0.0/8]
+      inject: [mobileAccess]
+      config: {}
