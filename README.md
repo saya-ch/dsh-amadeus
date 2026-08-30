@@ -20,7 +20,7 @@
 
 ```sh
 # 安装插件
-dsh plugin --profile web add dsh-amadeus-whale
+dsh plugin --profile web add dsh-amadeus
 
 # 启动 DSH 后，手机端通过 cpolar/tailscale/frp 配对
 # 新建 amadeus 会话，开始 Galgame 对话

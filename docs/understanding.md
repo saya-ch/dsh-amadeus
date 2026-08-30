@@ -65,7 +65,7 @@
 ## 5. 与 dsh-mobile 的关系
 
 - `dsh-mobile` = 通用移动适配 + 安全网关，解决“怎么连上”
-- `dsh-amadeus-whale` = 垂直 Galgame Mode + 定制 APP，解决“连上后怎么演”
+- `dsh-amadeus` = 垂直 Galgame Mode + 定制 APP，解决“连上后怎么演”
 - 连接层代码复用度 >70%，重点改 `mobile.js` 的注入点与 `plugin.ts` 的 Mode 注册。
 
 ## 6. 美术与资源 (后续)
@@ -77,12 +77,12 @@
 
 ## 7. MVP 步骤
 
-1.  创建 `dsh-amadeus-whale` 骨架，复用 `dsh-mobile` 的 gateway 与配对
+1.  创建 `dsh-amadeus` 骨架，复用 `dsh-mobile` 的 gateway 与配对
 2.  注册 `amadeus` Mode，写入鲸鱼娘 System Prompt + 标签铁律
 3.  实现标签剥离与立绘切换的最小闭环（手机新建 amadeus 会话 -> 模型输出带标签 -> APP 切图）
 4.  补齐选档页、思考/工具的 Galgame 演出、顺序播放等细节
 
 ## 8. 当前状态
 
-- 新项目文件夹 `C:\develop\dsh-amadeus-whale` 已创建
+- 新项目文件夹 `C:\develop\dsh-amadeus` 已创建
 - 理解文档已落盘，后续开发基于此文档展开
