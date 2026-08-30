@@ -622,25 +622,22 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     const unregisterAmadeus = ctx.webServer.register(amadeusRoute)
     const unregister = ctx.webServer.register(adminRoute)
     const disposeMobileCommand = (ctx as any).commands.register({
-      name: 'mobile',
-      description: '按需求修改 DSH Mobile 的手机端界面或添加电脑端能力',
+      name: 'amadeus',
+      description: 'Amadeus: Whale 专属 — 在 amadeus Mode 下定制 Galgame 剧场',
       input: { hint: '<要做什么>' },
       handler: ({ agent, rawInput }: any) => {
         const task = rawInput.trim()
-        if (task === '') return { kind: 'error', text: '请带上需求，例如：/mobile 把手机端改成深色主题' }
-        // A plugin-source message renders as a collapsed context-injection row
-        // (label "dsh-mobile", one-line notice summary) instead of a user bubble,
-        // while steering still wakes the agent with the full guide as input.
+        if (task === '') return { kind: 'error', text: '请带上需求，例如：/amadeus 把鲸鱼娘改成更傲娇一点' }
         agent.steer(createUserMessage({
           content: [{ type: 'text', text: `${MOBILE_CUSTOMIZATION_GUIDE}\n\n用户需求：${task}` }],
           source: {
             kind: 'plugin',
-            plugin: 'dsh-mobile',
+            plugin: 'dsh-amadeus',
             form: 'notice',
-            summary: boundContextSummary(`/mobile ${task}`),
+            summary: boundContextSummary(`/amadeus ${task}`),
           },
         }))
-        return { kind: 'success', text: '已把需求交给 DSH 处理，改动会在手机端几秒内生效。' }
+        return { kind: 'success', text: '已把需求交给 Amadeus 处理，Galgame 剧场几秒内生效。' }
       },
     })
     try {
