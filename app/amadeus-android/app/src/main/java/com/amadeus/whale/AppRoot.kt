@@ -45,6 +45,7 @@ import com.amadeus.whale.window.ChoiceWindow
 import com.amadeus.whale.window.HistoryWindow
 import com.amadeus.whale.window.PreviewWindow
 import com.amadeus.whale.window.ReportWindow
+import com.amadeus.whale.window.trapTaps
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -222,7 +223,7 @@ private fun WindowOverlayHost(
 
 @Composable
 private fun WindowLoading() {
-  Surface(Modifier.fillMaxSize()) {
+  Surface(Modifier.fillMaxSize().trapTaps()) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       CircularProgressIndicator()
     }
@@ -231,7 +232,7 @@ private fun WindowLoading() {
 
 @Composable
 private fun WindowLoadError(message: String) {
-  Surface(Modifier.fillMaxSize()) {
+  Surface(Modifier.fillMaxSize().trapTaps()) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       Text(message, color = Color(0xFF444444))
     }

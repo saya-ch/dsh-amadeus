@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,27 +47,31 @@ fun HistoryWindow(sessionId: String, api: AmadeusApi, onClose: () -> Unit) {
   var hasMore by remember(sessionId) { mutableStateOf(true) }
   var loading by remember(sessionId) { mutableStateOf(false) }
   var loadedOnce by remember(sessionId) { mutableStateOf(false) }
+  var failed by remember(sessionId) { mutableStateOf(false) }
+  var retryTick by remember(sessionId) { mutableStateOf(0) }
   val listState = rememberLazyListState()
 
   suspend fun loadOlder() {
     if (loading || !hasMore) return
     loading = true
-    val page = runCatching {
+    failed = false
+    runCatching {
       // 消息不带 seq，用已加载条数作 beforeSeq 代理（分页推进单调，页面重叠由去重兜底）
       api.pageSession(sessionId, beforeSeq = if (loadedOnce) messages.size.toLong() else null)
-    }.getOrNull()
-    if (page != null) {
-      val fresh = page.messages.asReversed().filter { m ->
-        messages.none { it.role == m.role && it.text == m.text }
-      }
-      messages = messages + fresh
-      hasMore = page.hasMore
-      loadedOnce = true
     }
+      .onSuccess { page ->
+        val fresh = page.messages.asReversed().filter { m ->
+          messages.none { it.role == m.role && it.text == m.text }
+        }
+        messages = messages + fresh
+        hasMore = page.hasMore
+        loadedOnce = true
+      }
+      .onFailure { failed = true }
     loading = false
   }
 
-  LaunchedEffect(sessionId) { loadOlder() }
+  LaunchedEffect(sessionId, retryTick) { loadOlder() }
 
   // 上滑到顶（reverseLayout 的末尾 = "more" 项可见）时加载更早一页
   val moreVisible = listState.layoutInfo.visibleItemsInfo.any { it.key == "more" }
@@ -74,7 +79,7 @@ fun HistoryWindow(sessionId: String, api: AmadeusApi, onClose: () -> Unit) {
     if (moreVisible && !loading && hasMore && loadedOnce) loadOlder()
   }
 
-  Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF5F2EC)) {
+  Surface(modifier = Modifier.fillMaxSize().trapTaps(), color = Color(0xFFF5F2EC)) {
     Column(Modifier.fillMaxSize()) {
       Row(
         modifier = Modifier
@@ -93,20 +98,32 @@ fun HistoryWindow(sessionId: String, api: AmadeusApi, onClose: () -> Unit) {
           Icon(Icons.Default.Close, contentDescription = "关闭", tint = MaterialTheme.colorScheme.onPrimary)
         }
       }
-      LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-        reverseLayout = true,
-      ) {
-        if (hasMore) {
-          item(key = "more") {
-            Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-              if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp))
-              else Text("上滑加载更早", color = Color(0x99666666), fontSize = 13.sp)
+      if (messages.isEmpty() && failed) {
+        Column(
+          modifier = Modifier.weight(1f).fillMaxWidth(),
+          verticalArrangement = Arrangement.Center,
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          Text("历史加载失败", color = Color(0xFF444444))
+          Spacer(Modifier.height(12.dp))
+          Button(onClick = { retryTick++ }) { Text("重试") }
+        }
+      } else {
+        LazyColumn(
+          state = listState,
+          modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+          reverseLayout = true,
+        ) {
+          if (hasMore) {
+            item(key = "more") {
+              Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                else Text("上滑加载更早", color = Color(0x99666666), fontSize = 13.sp)
+              }
             }
           }
+          itemsIndexed(messages, key = { i, m -> "m:$i:${m.role}:${m.text.take(24)}" }) { _, m -> MessageBubble(m) }
         }
-        itemsIndexed(messages, key = { i, m -> "m:$i:${m.role}:${m.text.take(24)}" }) { _, m -> MessageBubble(m) }
       }
     }
   }

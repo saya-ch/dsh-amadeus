@@ -27,7 +27,7 @@ import com.amadeus.whale.network.ReportPayload
 
 @Composable
 fun ReportWindow(report: ReportPayload, onClose: () -> Unit) {
-  Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF5F2EC)) {
+  Surface(modifier = Modifier.fillMaxSize().trapTaps(), color = Color(0xFFF5F2EC)) {
     Column(Modifier.fillMaxSize()) {
       Row(
         modifier = Modifier

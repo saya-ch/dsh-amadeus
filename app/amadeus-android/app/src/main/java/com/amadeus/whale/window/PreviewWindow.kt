@@ -42,7 +42,7 @@ import com.amadeus.whale.network.PreviewPayload
 
 @Composable
 fun PreviewWindow(preview: PreviewPayload, onClose: () -> Unit) {
-  Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF141414)) {
+  Surface(modifier = Modifier.fillMaxSize().trapTaps(), color = Color(0xFF141414)) {
     Column(Modifier.fillMaxSize()) {
       Row(
         modifier = Modifier
@@ -115,5 +115,6 @@ private fun WebPreview(url: String) {
       }
     },
     modifier = Modifier.fillMaxSize(),
+    onRelease = { it.destroy() },
   )
 }

@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,13 +32,16 @@ fun ChoiceWindow(
   onSelect: (String) -> Unit,
   onClose: () -> Unit,
 ) {
-  Box(Modifier.fillMaxSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+  Box(Modifier.fillMaxSize().background(Color(0x99000000)).trapTaps(), contentAlignment = Alignment.Center) {
     Surface(
       shape = RoundedCornerShape(20.dp),
       color = Color(0xFFF5F2EC),
-      modifier = Modifier.fillMaxWidth().padding(24.dp),
+      modifier = Modifier.fillMaxWidth().padding(24.dp).heightIn(max = 460.dp),
     ) {
-      Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+      Column(
+        Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
         Text(
           text = question.ifBlank { "鲸鱼娘想问你" },
           style = MaterialTheme.typography.titleMedium,
