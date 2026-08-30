@@ -1,15 +1,12 @@
 /**
  * Amadeus 专用 Gateway — 在 dsh-mobile 的 MobileAccessGateway 基础上
- * 增加 /amadeus/sessions 选档 API，强制 mode=amadeus
- *
- * 复用 dsh-mobile 的 TLS/配对/发现/远程通道，仅在 adminRoute 上扩展
+ * 增加 /amadeus/sessions 选档 + 报告/预览/choice 能力
  */
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { HttpError, LOCAL_ADMIN_PREFIX, assertLocalAdminTrust, parseRequestTarget, readJsonObject, sendJson, sendFailure } from './http-security.js'
-import { ensureAmadeusTag, parseAmadeusTag } from './amadeus-tags.js'
+import { HttpError, assertLocalAdminTrust, parseRequestTarget, readJsonObject, sendJson, sendFailure } from './http-security.js'
+import { ensureAmadeusTag, parseAmadeusTag, parseAmadeusSegments } from './amadeus-tags.js'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 
-// 简化的会话元数据，实际应从 DSH 的 session 存储中查询
 export interface AmadeusSessionSummary {
   readonly id: string
   readonly title: string
@@ -18,17 +15,32 @@ export interface AmadeusSessionSummary {
   readonly lastMessage?: string
 }
 
+export interface AmadeusReport {
+  readonly id: string
+  readonly title: string
+  readonly markdown: string
+  readonly createdAt: number
+}
+
 export interface AmadeusGatewayOptions {
   readonly sessions: {
     list(mode: string): Promise<AmadeusSessionSummary[]>
     create(mode: string, title?: string): Promise<AmadeusSessionSummary>
     get(id: string): Promise<AmadeusSessionSummary | null>
   }
+  readonly reports?: {
+    get(id: string): Promise<AmadeusReport | null>
+    save(report: AmadeusReport): Promise<void>
+    list(): Promise<AmadeusReport[]>
+  }
+  // ask_user_question 的 pending 队列，由 Host 拦截工具调用后写入，APP 轮询或 WS 推送
+  readonly choices?: {
+    create(choiceId: string, question: string, options: string[]): Promise<void>
+    resolve(choiceId: string, selected: string): Promise<void>
+    get(choiceId: string): Promise<{ question: string, options: string[] } | null>
+  }
 }
 
-/**
- * 创建 /amadeus 前缀的 WebRoute，可与现有的 LOCAL_ADMIN_PREFIX 并存
- */
 export function createAmadeusRoute(options: AmadeusGatewayOptions): WebRoute {
   return {
     kind: 'prefix',
@@ -36,14 +48,9 @@ export function createAmadeusRoute(options: AmadeusGatewayOptions): WebRoute {
     handler: async (request, response) => {
       try {
         const target = parseRequestTarget(request.url)
-        // 复用 dsh-mobile 的本地信任校验
         assertLocalAdminTrust(request, request.method === 'POST')
 
-        if (target.search !== '' && target.decodedPathname !== '/amadeus/sessions') {
-          throw new HttpError(400, 'bad_request')
-        }
-
-        // GET /amadeus/sessions?mode=amadeus  选档列表
+        // GET /amadeus/sessions?mode=amadeus
         if (request.method === 'GET' && target.decodedPathname === '/amadeus/sessions') {
           const url = new URL(request.url ?? '/', 'http://localhost')
           const mode = url.searchParams.get('mode') ?? AMADEUS_MODE_ID
@@ -53,7 +60,7 @@ export function createAmadeusRoute(options: AmadeusGatewayOptions): WebRoute {
           return
         }
 
-        // POST /amadeus/sessions  新建存档
+        // POST /amadeus/sessions
         if (request.method === 'POST' && target.decodedPathname === '/amadeus/sessions') {
           const body = await readJsonObject(request, 4096)
           const title = typeof body.title === 'string' ? body.title.slice(0, 64) : undefined
@@ -62,13 +69,57 @@ export function createAmadeusRoute(options: AmadeusGatewayOptions): WebRoute {
           return
         }
 
-        // POST /amadeus/tag/ensure  调试：确保标签
+        // GET /amadeus/reports  报告列表
+        if (request.method === 'GET' && target.decodedPathname === '/amadeus/reports') {
+          const list = options.reports ? await options.reports.list() : []
+          sendJson(response, 200, { reports: list }, false)
+          return
+        }
+
+        // GET /amadeus/reports/:id  报告详情
+        if (request.method === 'GET' && target.decodedPathname.startsWith('/amadeus/reports/')) {
+          const id = target.decodedPathname.slice('/amadeus/reports/'.length)
+          if (!id || !/^[a-z0-9_-]{1,64}$/i.test(id)) throw new HttpError(400, 'bad_request')
+          const report = options.reports ? await options.reports.get(id) : null
+          if (!report) throw new HttpError(404, 'not_found')
+          sendJson(response, 200, { report }, false)
+          return
+        }
+
+        // POST /amadeus/reports  保存报告 (Host 内部调用)
+        if (request.method === 'POST' && target.decodedPathname === '/amadeus/reports') {
+          if (!options.reports) throw new HttpError(404, 'not_found')
+          const body = await readJsonObject(request, 64 * 1024)
+          if (typeof body.id !== 'string' || typeof body.markdown !== 'string') throw new HttpError(400, 'bad_request')
+          const report: AmadeusReport = {
+            id: body.id,
+            title: typeof body.title === 'string' ? body.title : '报告',
+            markdown: body.markdown,
+            createdAt: Date.now(),
+          }
+          await options.reports.save(report)
+          sendJson(response, 201, { report }, false)
+          return
+        }
+
+        // POST /amadeus/choice  用户在 Galgame 选项卡选择后回调
+        if (request.method === 'POST' && target.decodedPathname === '/amadeus/choice') {
+          if (!options.choices) throw new HttpError(404, 'not_found')
+          const body = await readJsonObject(request, 4096)
+          if (typeof body.choiceId !== 'string' || typeof body.selected !== 'string') throw new HttpError(400, 'bad_request')
+          await options.choices.resolve(body.choiceId, body.selected)
+          sendJson(response, 200, { ok: true }, false)
+          return
+        }
+
+        // POST /amadeus/tag/ensure  调试：多句分页解析
         if (request.method === 'POST' && target.decodedPathname === '/amadeus/tag/ensure') {
-          const body = await readJsonObject(request, 8192)
+          const body = await readJsonObject(request, 64 * 1024)
           if (typeof body.text !== 'string') throw new HttpError(400, 'bad_request')
+          const segments = parseAmadeusSegments(body.text)
           const ensured = ensureAmadeusTag(body.text)
           const parsed = parseAmadeusTag(ensured)
-          sendJson(response, 200, { ensured: ensured, clean: parsed.clean, tag: parsed.tag }, false)
+          sendJson(response, 200, { segments, ensured, clean: parsed.clean, tag: parsed.tag }, false)
           return
         }
 
@@ -82,10 +133,14 @@ export function createAmadeusRoute(options: AmadeusGatewayOptions): WebRoute {
   }
 }
 
-/**
- * 在 amadeus Mode 的 LLM 输出管道中强制标签
- * 由插件的 llm hook 调用
- */
 export function ensureTagForAmadeus(text: string): string {
   return ensureAmadeusTag(text)
+}
+
+/**
+ * 拦截 ask_user_question 工具调用，转为 Galgame choice 窗口
+ * 由 Host 的 tool 拦截层调用
+ */
+export function toChoiceTag(choiceId: string, question: string, options: string[]): string {
+  return `要怎么选呢... [[AMW:{"mood":"think","sprite":"think","voice":"soft","sfx":"bell","bgm":"none","window":"choice","choiceId":"${choiceId}","options":${JSON.stringify(options)}}]]`
 }
