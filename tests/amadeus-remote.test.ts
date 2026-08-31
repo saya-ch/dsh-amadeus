@@ -1,8 +1,12 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { AmadeusRemoteCoordinator, FrpController, JsonRemoteStore, type AmadeusRemoteController } from '../src/amadeus-remote.js'
+import { createServer } from 'node:net'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  AmadeusRemoteCoordinator, FrpController, JsonRemoteStore, parseFrpConfig,
+  type AmadeusRemoteController, type SpawnHandle,
+} from '../src/amadeus-remote.js'
 
 let dir: string
 beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'amw-')) })
@@ -24,6 +28,38 @@ function allControllers(overrides: Partial<Record<'frp' | 'tailscale' | 'cpolar'
     tailscale: controller(overrides.tailscale),
     cpolar: controller(overrides.cpolar),
   }
+}
+
+interface SpawnRecord {
+  command: string
+  args: string[]
+  killed: boolean
+}
+
+function recordingSpawn(record: SpawnRecord, pid = 4242) {
+  return (command: string, args: string[], _options: object): SpawnHandle => {
+    record.command = command
+    record.args = args
+    return {
+      pid,
+      on: () => undefined,
+      kill: () => { record.killed = true; return true },
+    }
+  }
+}
+
+function controllableSpawn() {
+  let exitHandler: ((code?: number | null, signal?: string | null) => void) | undefined
+  const handle: SpawnHandle & { triggerExit(code?: number | null): void } = {
+    pid: 1234,
+    on: (event: string, cb) => {
+      if (event === 'exit') exitHandler = cb
+      return handle
+    },
+    kill: () => true,
+    triggerExit: (code) => { exitHandler?.(code) },
+  }
+  return { handle, spawn: (): SpawnHandle => handle }
 }
 
 describe('json remote store', () => {
@@ -104,26 +140,119 @@ describe('remote coordinator', () => {
   })
 })
 
-describe('frp controller skeleton', () => {
-  it('is off before enable', async () => {
+describe('frp controller', () => {
+  it('reports unconfigured when no config file exists', async () => {
+    const frp = new FrpController(dir, join(dir, 'frp.json'))
+    await frp.initialize()
+    expect(frp.status()).toEqual({ enabled: false, state: 'unconfigured' })
+  })
+
+  it('is off before enable when configured', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
     const frp = new FrpController(dir, join(dir, 'frp.json'))
     await frp.initialize()
     expect(frp.status()).toEqual({ enabled: false, state: 'off' })
   })
 
+  it('starts and stops a child process', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record) })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    expect(frp.status()).toEqual({ enabled: true, state: 'running', pid: 4242 })
+    expect(record.command).toBe('frpc')
+    expect(record.args).toEqual(['-c', join(dir, 'frpc-run.toml')])
+    const toml = await readFile(join(dir, 'frpc-run.toml'), 'utf8')
+    expect(toml).toContain('serverAddr = "example.com"')
+    expect(toml).toContain('serverPort = 7000')
+    expect(toml).toContain('remotePort = 7000')
+    await frp.setEnabled(false)
+    expect(frp.status()).toEqual({ enabled: false, state: 'off' })
+    expect(record.killed).toBe(true)
+  })
+
   it('reflects the enabled flag without a fabricated origin', async () => {
-    const frp = new FrpController(dir, join(dir, 'frp.json'))
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record) })
+    await frp.initialize()
     await frp.setEnabled(true)
     expect(frp.status().enabled).toBe(true)
     expect(frp.status().origin).toBeUndefined()
   })
 
   it('disable and close leave it off', async () => {
-    const frp = new FrpController(dir, join(dir, 'frp.json'))
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record) })
+    await frp.initialize()
     await frp.setEnabled(true)
     await frp.setEnabled(false)
     expect(frp.status().enabled).toBe(false)
     await frp.close()
-    expect(frp.status().state).toBe('off')
+    expect(frp.status()).toEqual({ enabled: false, state: 'off' })
+  })
+
+  it('close kills the child and removes the runtime config', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record) })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    await frp.close()
+    expect(record.killed).toBe(true)
+    expect(frp.status()).toEqual({ enabled: false, state: 'off' })
+    await expect(readFile(join(dir, 'frpc-run.toml'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('marks the process as failed when the child exits', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const { handle, spawn } = controllableSpawn()
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    expect(frp.status().state).toBe('running')
+    handle.triggerExit(1)
+    expect(frp.status()).toEqual({ enabled: false, state: 'failed', errorCode: 'frpc_exit_1' })
+  })
+
+  it('reports endpoint_unreachable when the public origin is not reachable', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({
+      serverAddress: 'example.com', serverPort: 7000, publicOrigin: 'http://127.0.0.1:1',
+    }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record), reachabilityTimeoutMs: 300 })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    expect(frp.status().state).toBe('running')
+    await vi.waitFor(() => expect(frp.status().errorCode).toBe('endpoint_unreachable'))
+  })
+
+  it('fills origin only when the public endpoint is reachable', async () => {
+    const server = createServer()
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
+    const port = (server.address() as { port: number }).port
+    const origin = `http://127.0.0.1:${port}`
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({
+      serverAddress: 'example.com', serverPort: 7000, publicOrigin: origin,
+    }))
+    const record: SpawnRecord = { command: '', args: [], killed: false }
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn: recordingSpawn(record) })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    await vi.waitFor(() => expect(frp.status().origin).toBe(origin))
+    expect(frp.status().errorCode).toBeUndefined()
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  })
+
+  it('parses minimal and invalid frp configs', () => {
+    expect(parseFrpConfig({ serverAddress: 'frp.example.com', serverPort: 7000 })).toEqual({
+      serverAddress: 'frp.example.com', serverPort: 7000,
+    })
+    expect(() => parseFrpConfig({ serverPort: 7000 })).toThrow('serverAddress')
+    expect(() => parseFrpConfig({ serverAddress: 'x', serverPort: 0 })).toThrow('serverPort')
+    expect(() => parseFrpConfig({ serverAddress: 'x', serverPort: 65536 })).toThrow('serverPort')
+    expect(() => parseFrpConfig([])).toThrow('frp config must be an object')
   })
 })
