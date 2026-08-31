@@ -22,7 +22,7 @@ import { Config as GatewayConfigSchema } from './config.js'
 export const name = 'dsh-amadeus'
 
 /** Own webserver route + loopback DSH connection; no shared services with dsh-mobile. */
-export const inject = ['webServer', 'connection']
+export const inject = ['webServer', 'connection', 'tools', 'sessionQuery', 'sessionController', 'workspaceRegistry']
 
 /** Amadeus configuration mirrors the gateway needs: its own files, port and TLS. */
 export const Config = GatewayConfigSchema

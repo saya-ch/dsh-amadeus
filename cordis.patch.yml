@@ -2,7 +2,7 @@
 - insert:
     - id: amadeus
       name: dsh-amadeus
-      inject: [webServer, connection]
+      inject: [webServer, connection, tools, sessionQuery, sessionController, workspaceRegistry]
       config:
         stateFile: !!js dshHomePath('amadeus/devices.json')
         controlFile: !!js dshHomePath('amadeus/control.json')
