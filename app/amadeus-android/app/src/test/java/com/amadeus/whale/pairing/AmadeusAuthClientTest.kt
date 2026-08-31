@@ -1,7 +1,21 @@
 package com.amadeus.whale.pairing
 
+import java.math.BigInteger
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.SecureRandom
+import java.security.Security
+import java.security.cert.X509Certificate
+import java.util.Date
+import javax.security.auth.x500.X500Principal
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
+import org.bouncycastle.asn1.x509.BasicConstraints
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -12,7 +26,7 @@ class AmadeusAuthClientTest {
 
   private fun origin(): GatewayOrigin = GatewayOrigin.parse("https://192.168.1.20:3444")
 
-  private fun target(): PairingScanTarget = PairingScanTarget(origin(), "a".repeat(64), "T".repeat(43))
+  private fun target(): PairingScanTarget = PairingScanTarget(origin(), TestCa.fingerprint, "T".repeat(43))
 
   @Test fun pairStoresCredentialAndReturnsClient() = runTest {
     val fake = FakeNativeAuthGateway()
@@ -21,7 +35,7 @@ class AmadeusAuthClientTest {
     val result = auth.pair(target())
     assertTrue(result is AuthResult.Success)
     val success = result as AuthResult.Success
-    assertEquals("a".repeat(64), success.instanceId)
+    assertEquals(TestCa.fingerprint, success.instanceId)
     assertNotNull(store.load(origin().serialized))
   }
 
@@ -37,7 +51,7 @@ class AmadeusAuthClientTest {
     val fake = FakeNativeAuthGateway()
     val store = FakeCredentialStore()
     val now = System.currentTimeMillis() + 3600_000
-    store.save(origin().serialized, DeviceCredential("a".repeat(64), "C".repeat(43), now, ByteArray(0), origin().serialized))
+    store.save(origin().serialized, DeviceCredential(TestCa.fingerprint, "C".repeat(43), now, TestCa.der, origin().serialized))
     val auth = AmadeusAuthClient(fake, store, OkHttpClient())
     val result = auth.restore(origin())
     assertTrue(result is AuthResult.Success)
@@ -57,7 +71,7 @@ class AmadeusAuthClientTest {
     val fake = FakeNativeAuthGateway(renewFails = true)
     val store = FakeCredentialStore()
     val now = System.currentTimeMillis() + 3600_000
-    store.save(origin().serialized, DeviceCredential("a".repeat(64), "C".repeat(43), now, ByteArray(0), origin().serialized))
+    store.save(origin().serialized, DeviceCredential(TestCa.fingerprint, "C".repeat(43), now, TestCa.der, origin().serialized))
     val auth = AmadeusAuthClient(fake, store, OkHttpClient())
     val result = auth.restore(origin())
     assertTrue(result is AuthResult.Failure)
@@ -75,7 +89,7 @@ class AmadeusAuthClientTest {
     val fake = FakeNativeAuthGateway()
     val store = FakeCredentialStore()
     val now = System.currentTimeMillis() + 3600_000
-    store.save(origin().serialized, DeviceCredential("a".repeat(64), "C".repeat(43), now, ByteArray(0), origin().serialized))
+    store.save(origin().serialized, DeviceCredential(TestCa.fingerprint, "C".repeat(43), now, TestCa.der, origin().serialized))
     val auth = AmadeusAuthClient(fake, store, OkHttpClient())
     assertNotNull(auth.createSessionClient(origin()))
   }
@@ -84,10 +98,45 @@ class AmadeusAuthClientTest {
     val fake = FakeNativeAuthGateway()
     val store = FakeCredentialStore()
     val now = System.currentTimeMillis() + 3600_000
-    store.save(origin().serialized, DeviceCredential("a".repeat(64), "C".repeat(43), now, ByteArray(0), origin().serialized))
+    store.save(origin().serialized, DeviceCredential(TestCa.fingerprint, "C".repeat(43), now, TestCa.der, origin().serialized))
     val auth = AmadeusAuthClient(fake, store, OkHttpClient())
     auth.clear(origin())
     assertNull(store.load(origin().serialized))
+  }
+}
+
+private object TestCa {
+  private val pair: Pair<X509Certificate, String> by lazy { makeSelfSignedCa() }
+
+  val cert: X509Certificate get() = pair.first
+  val fingerprint: String get() = pair.second
+  val der: ByteArray get() = cert.encoded
+
+  private fun ensureBc() {
+    if (Security.getProvider("BC") == null) {
+      Security.addProvider(BouncyCastleProvider())
+    }
+  }
+
+  private fun makeSelfSignedCa(): Pair<X509Certificate, String> {
+    ensureBc()
+    val kpg = KeyPairGenerator.getInstance("EC")
+    kpg.initialize(256, SecureRandom())
+    val kp: KeyPair = kpg.generateKeyPair()
+    val now = System.currentTimeMillis()
+    val builder = JcaX509v3CertificateBuilder(
+      X500Principal("CN=amadeus-test"),
+      BigInteger.ONE,
+      Date(now - 1000),
+      Date(now + 365L * 24 * 3600 * 1000),
+      X500Principal("CN=amadeus-test"),
+      kp.public,
+    )
+    builder.addExtension(Extension.basicConstraints, true, BasicConstraints(true))
+    val signer = JcaContentSignerBuilder("SHA256withECDSA").setProvider("BC").build(kp.private)
+    val cert = JcaX509CertificateConverter().setProvider("BC").getCertificate(builder.build(signer))
+    val fingerprint = PinnedTls.sha256Fingerprint(cert)
+    return cert to fingerprint
   }
 }
 
@@ -98,7 +147,7 @@ private class FakeNativeAuthGateway(
 ) : NativeAuthGateway {
   override suspend fun fetchPairingCa(origin: GatewayOrigin): ByteArray {
     if (fetchFails) throw NativeAuthException(NativeAuthFailureKind.NETWORK, "fetch failed")
-    return ByteArray(0)
+    return TestCa.der
   }
 
   override suspend fun pair(origin: GatewayOrigin, token: String, caDer: ByteArray, instanceId: String, label: String?): NativeSession {

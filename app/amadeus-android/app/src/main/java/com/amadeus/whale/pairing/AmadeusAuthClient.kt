@@ -43,14 +43,12 @@ class AmadeusAuthClient(
   suspend fun pair(target: PairingScanTarget, label: String? = null): AuthResult {
     return try {
       val caDer = nativeAuth.fetchPairingCa(target.origin)
-      if (caDer.isNotEmpty()) {
-        try {
-          PinnedTls.validateCertificate(caDer, target.instanceId)
-        } catch (e: SecurityException) {
-          return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
-        } catch (e: Exception) {
-          return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
-        }
+      try {
+        PinnedTls.validateCertificate(caDer, target.instanceId)
+      } catch (e: SecurityException) {
+        return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
+      } catch (e: Exception) {
+        return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
       }
       val session = nativeAuth.pair(target.origin, target.token, caDer, target.instanceId, label)
       val credential = DeviceCredential(
@@ -91,16 +89,14 @@ class AmadeusAuthClient(
     if (credential == null) {
       return AuthResult.Failure(NativeAuthFailureKind.INVALID_RESPONSE, "no saved credential")
     }
-    if (credential.caCertificate.isNotEmpty()) {
-      try {
-        PinnedTls.validateCertificate(credential.caCertificate, credential.instanceId)
-      } catch (e: SecurityException) {
-        credentialStore.clear(origin.serialized)
-        return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
-      } catch (e: Exception) {
-        credentialStore.clear(origin.serialized)
-        return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
-      }
+    try {
+      PinnedTls.validateCertificate(credential.caCertificate, credential.instanceId)
+    } catch (e: SecurityException) {
+      credentialStore.clear(origin.serialized)
+      return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
+    } catch (e: Exception) {
+      credentialStore.clear(origin.serialized)
+      return AuthResult.Failure(NativeAuthFailureKind.TLS, e.message ?: "tls validation failed", e)
     }
     return try {
       val session = nativeAuth.renew(origin, credential.deviceToken, credential.caCertificate, credential.instanceId)
@@ -131,28 +127,22 @@ class AmadeusAuthClient(
 
   fun createSessionClient(origin: GatewayOrigin): OkHttpClient? {
     val credential = credentialStore.load(origin.serialized) ?: return null
-    if (credential.caCertificate.isNotEmpty()) {
-      try {
-        PinnedTls.validateCertificate(credential.caCertificate, credential.instanceId)
-      } catch (_: Exception) {
-        return null
-      }
+    try {
+      PinnedTls.validateCertificate(credential.caCertificate, credential.instanceId)
+    } catch (_: Exception) {
+      return null
     }
     return try {
       val jar = AuthCookieJar()
-      val pinned = if (credential.caCertificate.isEmpty()) {
-        baseClient
-      } else {
-        try {
-          baseClient.newBuilder()
-            .sslSocketFactory(
-              PinnedTls.socketFactory(credential.caCertificate, credential.instanceId),
-              PinnedTls.trustManager(credential.caCertificate, credential.instanceId),
-            )
-            .build()
-        } catch (_: Exception) {
-          return null
-        }
+      val pinned = try {
+        baseClient.newBuilder()
+          .sslSocketFactory(
+            PinnedTls.socketFactory(credential.caCertificate, credential.instanceId),
+            PinnedTls.trustManager(credential.caCertificate, credential.instanceId),
+          )
+          .build()
+      } catch (_: Exception) {
+        return null
       }
       buildAuthClient(pinned, jar)
     } catch (_: Exception) {
@@ -167,13 +157,9 @@ class AmadeusAuthClient(
   fun buildSessionClient(origin: GatewayOrigin, sessionToken: String, csrfToken: String, caDer: ByteArray, instanceId: String): OkHttpClient {
     val jar = AuthCookieJar()
     jar.store("amw_session=$sessionToken; Path=/; Secure; HttpOnly", "amw_csrf=$csrfToken; Path=/; Secure")
-    val pinned = if (caDer.isEmpty()) {
-      baseClient
-    } else {
-      baseClient.newBuilder()
-        .sslSocketFactory(PinnedTls.socketFactory(caDer, instanceId), PinnedTls.trustManager(caDer, instanceId))
-        .build()
-    }
+    val pinned = baseClient.newBuilder()
+      .sslSocketFactory(PinnedTls.socketFactory(caDer, instanceId), PinnedTls.trustManager(caDer, instanceId))
+      .build()
     return buildAuthClient(pinned, jar)
   }
 }
