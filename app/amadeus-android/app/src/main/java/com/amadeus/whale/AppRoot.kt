@@ -32,6 +32,10 @@ import com.amadeus.whale.network.AmadeusStream
 import com.amadeus.whale.network.PreviewPayload
 import com.amadeus.whale.network.ReportPayload
 import com.amadeus.whale.network.StreamEvent
+import com.amadeus.whale.pairing.AmadeusAuthClient
+import com.amadeus.whale.pairing.AuthResult
+import com.amadeus.whale.pairing.GatewayOrigin
+import com.amadeus.whale.pairing.PairingService
 import com.amadeus.whale.saveslot.SaveSlotScreen
 import com.amadeus.whale.saveslot.SaveSlotViewModel
 import com.amadeus.whale.settings.SettingsScreen
@@ -51,7 +55,7 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
 @Composable
-fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
+fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound, pairing: PairingService, authClient: AmadeusAuthClient) {
   var screen by remember { mutableStateOf(Screen.Demo) }
   var selectedSessionId by remember { mutableStateOf<String?>(null) }
   var settingsOpen by remember { mutableStateOf(false) }
@@ -59,18 +63,34 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
   var historyOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
 
-  val client = remember {
+  val baseClient = remember {
     OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
   }
-  val apiOf = remember { { url: String -> AmadeusApi(url, client) } }
+  var sessionClient by remember { mutableStateOf<OkHttpClient?>(null) }
+  val settingsApiProvider = remember(baseClient) { { url: String -> AmadeusApi(url, baseClient) } }
 
   LaunchedEffect(Unit) {
     val saved = prefs.baseUrl
-    if (saved != null && runCatching { apiOf(saved).health() }.getOrDefault(false)) {
-      screen = Screen.Real
-    } else {
-      screen = Screen.Demo
+    if (saved != null) {
+      val origin = runCatching { GatewayOrigin.parse(saved) }.getOrNull()
+      if (origin != null) {
+        when (val r = pairing.restore(origin)) {
+          is AuthResult.Success -> {
+            sessionClient = r.client
+            screen = Screen.Real
+          }
+          is AuthResult.Failure -> {
+            prefs.clear()
+            sessionClient = null
+            screen = Screen.Demo
+          }
+        }
+        return@LaunchedEffect
+      } else {
+        prefs.clear()
+      }
     }
+    screen = Screen.Demo
   }
 
   // 环境音仅 demo：离开 demo（进入真实模式）时停掉正在循环的 BGM/SFX
@@ -78,7 +98,7 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
     if (screen != Screen.Demo) sound.stopAll()
   }
 
-  val settingsVm = remember { SettingsViewModel(prefs, apiOf) }
+  val settingsVm = remember { SettingsViewModel(prefs, settingsApiProvider, pairing) }
   val openSettings: () -> Unit = {
     settingsBaseUrl = prefs.baseUrl
     settingsOpen = true
@@ -86,14 +106,56 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
   if (settingsOpen) {
     SettingsScreen(viewModel = settingsVm, isRealMode = screen == Screen.Real, onDone = {
       settingsOpen = false
-      if (prefs.baseUrl == null) {
-        selectedSessionId = null
-        screen = Screen.Demo
-      } else if (screen != Screen.Real) {
-        screen = Screen.Real
-      } else if (settingsBaseUrl != prefs.baseUrl) {
-        // 网关已变更：丢弃旧网关上的会话与 SSE 连接，回到选档按新网关重新进入
-        selectedSessionId = null
+      scope.launch {
+        if (prefs.baseUrl == null) {
+          settingsBaseUrl?.let { old ->
+            runCatching { GatewayOrigin.parse(old) }.getOrNull()?.let { authClient.clear(it) }
+          }
+          sessionClient = null
+          selectedSessionId = null
+          screen = Screen.Demo
+          return@launch
+        }
+        // 同步配对成功后的 session client（若有）
+        settingsVm.lastSessionClient?.let { sessionClient = it }
+        if (screen != Screen.Real) {
+          if (sessionClient == null) {
+            val origin = runCatching { GatewayOrigin.parse(prefs.baseUrl!!) }.getOrNull()
+            if (origin != null) {
+              when (val r = pairing.restore(origin)) {
+                is AuthResult.Success -> sessionClient = r.client
+                is AuthResult.Failure -> {
+                  prefs.clear()
+                  sessionClient = null
+                  screen = Screen.Demo
+                  return@launch
+                }
+              }
+            }
+          }
+          screen = Screen.Real
+        } else if (settingsBaseUrl != prefs.baseUrl) {
+          // 网关已变更：丢弃旧网关上的会话与 SSE 连接，回到选档按新网关重新进入
+          selectedSessionId = null
+          settingsBaseUrl?.let { old ->
+            runCatching { GatewayOrigin.parse(old) }.getOrNull()?.let { authClient.clear(it) }
+          }
+          if (sessionClient == null) {
+            settingsVm.lastSessionClient?.let { sessionClient = it }
+          }
+          if (sessionClient == null) {
+            val origin = runCatching { GatewayOrigin.parse(prefs.baseUrl!!) }.getOrNull()
+            if (origin != null) {
+              when (val r = pairing.restore(origin)) {
+                is AuthResult.Success -> sessionClient = r.client
+                is AuthResult.Failure -> { /* keep without session, fallback to base */ }
+              }
+            }
+          }
+        } else {
+          // 同一网关下可能通过配对刷新了凭据，同步 client
+          settingsVm.lastSessionClient?.let { sessionClient = it }
+        }
       }
     })
     return
@@ -117,12 +179,13 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound) {
       )
     }
     Screen.Real -> {
-      val saveVm = remember(prefs.baseUrl) { SaveSlotViewModel(apiOf(prefs.baseUrl!!)) }
-      LaunchedEffect(prefs.baseUrl) { saveVm.load() }
+      val effectiveClient = sessionClient ?: baseClient
+      val saveVm = remember(prefs.baseUrl, effectiveClient) { SaveSlotViewModel(AmadeusApi(prefs.baseUrl!!, effectiveClient)) }
+      LaunchedEffect(prefs.baseUrl, effectiveClient) { saveVm.load() }
       selectedSessionId?.let { sessionId ->
-        val api = apiOf(prefs.baseUrl!!)
-        val stream = remember(prefs.baseUrl) { AmadeusStream(prefs.baseUrl!!, client) }
-        val realFeed = remember(sessionId, prefs.baseUrl) { RealFeed(sessionId, api, stream) }
+        val api = AmadeusApi(prefs.baseUrl!!, effectiveClient)
+        val stream = remember(prefs.baseUrl, effectiveClient) { AmadeusStream(prefs.baseUrl!!, effectiveClient) }
+        val realFeed = remember(sessionId, prefs.baseUrl, effectiveClient) { RealFeed(sessionId, api, stream) }
         val vm = remember(sessionId, prefs.baseUrl) {
           TheatreViewModel(realFeed, backgroundResolver = { mood ->
             if (mood == AmadeusMood.tool || mood == AmadeusMood.think) "bg-gpt-collaboration-workshop"
