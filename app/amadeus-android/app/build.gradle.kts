@@ -43,4 +43,6 @@ dependencies {
   testImplementation(kotlin("test"))
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.okhttp.mockwebserver)
+  testImplementation(libs.bcprov)
+  testImplementation(libs.bcpkix)
 }
