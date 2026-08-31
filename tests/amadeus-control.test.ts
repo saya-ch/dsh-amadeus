@@ -16,11 +16,19 @@ function fakeGateway(): {
   }
 }
 
+function remoteOptions() {
+  return {
+    remoteProvider: () => 'frp' as const,
+    remoteStatus: () => ({ enabled: false, state: 'off' }),
+  }
+}
+
 describe('control routes', () => {
   it('reports running from lan controller', async () => {
     const routes = new AmadeusControlRoutes({
       isRunning: () => true,
       gateway: () => fakeGateway(),
+      ...remoteOptions(),
     })
     const res = await routes.controlGet()
     const body = JSON.parse(res.body as string) as Record<string, unknown>
@@ -31,19 +39,19 @@ describe('control routes', () => {
   it('reports pairing open from the gateway pairing window', async () => {
     const gateway = fakeGateway()
     gateway.pairingStatus = () => ({ open: true, expiresAt: 1_700_000_000_000 })
-    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => gateway })
+    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => gateway, ...remoteOptions() })
     const body = JSON.parse((await routes.controlGet()).body as string) as Record<string, unknown>
     expect(body.pairingOpen).toBe(true)
   })
 
   it('exposes the gateway origin for the panel link', async () => {
-    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => fakeGateway() })
+    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => fakeGateway(), ...remoteOptions() })
     const body = JSON.parse((await routes.controlGet()).body as string) as Record<string, unknown>
     expect(body.origin).toBe('https://amadeus.local:3444')
   })
 
   it('reports empty devices and closed pairing while the gateway is stopped', async () => {
-    const routes = new AmadeusControlRoutes({ isRunning: () => false, gateway: () => undefined })
+    const routes = new AmadeusControlRoutes({ isRunning: () => false, gateway: () => undefined, ...remoteOptions() })
     const body = JSON.parse((await routes.controlGet()).body as string) as Record<string, unknown>
     expect(body.running).toBe(false)
     expect(body.devices).toEqual([])
@@ -52,8 +60,20 @@ describe('control routes', () => {
   })
 
   it('maps devices to the client shape with lastSeenAt', async () => {
-    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => fakeGateway() })
+    const routes = new AmadeusControlRoutes({ isRunning: () => true, gateway: () => fakeGateway(), ...remoteOptions() })
     const body = JSON.parse((await routes.controlGet()).body as string) as Record<string, unknown>
     expect(body.devices).toEqual([{ id: 'd1', label: 'Phone', lastSeenAt: 3 }])
   })
+
+  it('includes remote status when present', () => {
+    const routes = new AmadeusControlRoutes({
+      isRunning: () => true,
+      gateway: () => ({ origin: 'https://127.0.0.1:3444', devices: () => [], pairingStatus: () => ({ open: false }) }),
+      remoteProvider: () => 'frp',
+      remoteStatus: () => ({ enabled: true, state: 'running', origin: 'https://amw.example.com' }),
+    })
+    const parsed = JSON.parse(routes.controlGet().body) as { remote?: { provider: string; enabled: boolean; state: string; origin?: string } }
+    expect(parsed.remote).toEqual({ provider: 'frp', enabled: true, state: 'running', origin: 'https://amw.example.com' })
+  })
 })
+

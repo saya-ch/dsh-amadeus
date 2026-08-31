@@ -1,4 +1,5 @@
 import type { DeviceSummary } from './access.js'
+import type { RemoteProvider, AmadeusRemoteStatus } from './amadeus-remote.js'
 
 /** Client-facing device row consumed by the desktop control panel. */
 export interface AmadeusControlDevice {
@@ -7,12 +8,22 @@ export interface AmadeusControlDevice {
   readonly lastSeenAt: number
 }
 
+/** Remote tunnel status surfaced to the desktop control panel. */
+export interface AmadeusRemoteView {
+  provider: RemoteProvider
+  enabled: boolean
+  state: string
+  origin?: string
+  errorCode?: string
+}
+
 /** Real desktop control state: the LAN running flag plus live gateway data. */
 export interface AmadeusControlState {
   readonly running: boolean
   readonly origin?: string
   readonly devices: readonly AmadeusControlDevice[]
   readonly pairingOpen: boolean
+  readonly remote?: AmadeusRemoteView
 }
 
 /** Minimal real gateway surface the control routes read from. */
@@ -25,6 +36,8 @@ export interface AmadeusGatewayControl {
 export interface AmadeusControlRoutesOptions {
   readonly isRunning: () => boolean
   readonly gateway: () => AmadeusGatewayControl | undefined
+  readonly remoteProvider: () => RemoteProvider
+  readonly remoteStatus: () => AmadeusRemoteStatus
 }
 
 /** Project the running gateway onto the desktop control-panel endpoints. */
@@ -34,6 +47,7 @@ export class AmadeusControlRoutes {
   /** GET /api/amadeus/control — running flag plus real devices and pairing window. */
   controlGet(): { status: number; body: string } {
     const gateway = this.options.gateway()
+    const remoteStatus = this.options.remoteStatus()
     const state: AmadeusControlState = {
       running: this.options.isRunning(),
       devices: gateway?.devices().map(device => ({
@@ -43,7 +57,9 @@ export class AmadeusControlRoutes {
       })) ?? [],
       pairingOpen: gateway?.pairingStatus().open ?? false,
       ...(gateway === undefined ? {} : { origin: gateway.origin }),
+      ...(remoteStatus === undefined ? {} : { remote: { provider: this.options.remoteProvider(), ...remoteStatus } }),
     }
     return { status: 200, body: JSON.stringify(state) }
   }
 }
+
