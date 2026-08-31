@@ -222,3 +222,43 @@ describe('choices adapter', () => {
     await expect(fresh.get('c1')).rejects.toThrow()
   })
 })
+
+describe('session routing of user-questions/request', () => {
+  it('pushes a choice frame to the stream registered for agent.session.id', async () => {
+    const ctx = { on: () => {} } as any
+    const adapter = new AmadeusChoicesAdapter(ctx, dir)
+    adapter.install()
+    const pushed: object[] = []
+    adapter.registerStream('session-1', frame => pushed.push(frame))
+    const promise = adapter.answerRequest({
+      questions: [{ id: 'q1', question: '选择', options: [{ label: 'A' }, { label: 'B' }] }],
+      agent: { session: { id: 'session-1' } },
+    })
+    for (let attempt = 0; attempt < 50 && pushed.length === 0; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
+    expect(pushed).toHaveLength(1)
+    const frame = pushed[0] as { type: string; choiceId: string; question: string; options: Array<{ label: string }> }
+    expect(frame.type).toBe('choice')
+    expect(frame.question).toBe('选择')
+    expect(frame.options.map(o => o.label)).toEqual(['A', 'B'])
+    await adapter.resolve(frame.choiceId, 'A')
+    const answer = await promise
+    expect(answer.answers[0]!.id).toBe('q1')
+  })
+
+  it('falls back to agent.id when session.id is absent', async () => {
+    const ctx = { on: () => {} } as any
+    const adapter = new AmadeusChoicesAdapter(ctx, dir)
+    const pushed: object[] = []
+    adapter.registerStream('agent-9', frame => pushed.push(frame))
+    const promise = adapter.answerRequest({
+      questions: [{ id: 'q1', question: 'x', options: [{ label: 'A' }] }],
+      agent: 'agent-9' as any,
+    })
+    for (let attempt = 0; attempt < 50 && pushed.length === 0; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
+    expect(pushed).toHaveLength(1)
+    const frame = pushed[0] as { type: string; choiceId: string }
+    expect(frame.type).toBe('choice')
+    await adapter.cancel((frame as { choiceId: string }).choiceId)
+    await expect(promise).rejects.toThrow('choice-cancelled')
+  })
+})
