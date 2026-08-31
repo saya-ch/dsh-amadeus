@@ -11,6 +11,7 @@ import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-cho
 import { AmadeusStreamHub } from './amadeus-stream.js'
 import { registerAmadeusTools } from './amadeus-tools.js'
 import { AmadeusControlRoutes } from './amadeus-control.js'
+import { AmadeusRemoteCoordinator, FrpController, JsonRemoteStore, NoopRemoteController } from './amadeus-remote.js'
 import { JsonDeviceStore } from './storage.js'
 import { JsonMobileAccessControlStore, MobileAccessGatewayController, type MobileAccessRuntime } from './control.js'
 import { parseControlFile, parseGatewayConfig, type PluginConfig } from './config.js'
@@ -188,6 +189,12 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     startRuntime,
   )
 
+  const remoteCoordinator = new AmadeusRemoteCoordinator(
+    { frp: new FrpController(stateDir, join(stateDir, 'frp.json')), tailscale: new NoopRemoteController(), cpolar: new NoopRemoteController() },
+    new JsonRemoteStore(join(stateDir, 'remote.json'), 'frp'),
+    'frp',
+  )
+
   const controlRoutes = new AmadeusControlRoutes({
     isRunning: () => lanController.isRunning(),
     gateway: () => {
@@ -198,6 +205,8 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
         pairingStatus: () => gateway.access.pairingStatus(),
       }
     },
+    remoteProvider: () => remoteCoordinator.selected,
+    remoteStatus: () => remoteCoordinator.status(),
   })
 
   const adminRoute: WebRoute = {
@@ -237,7 +246,9 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   await ctx.effect(async () => {
     const unregister = ctx.webServer.register(adminRoute)
     await lanController.initialize()
+    await remoteCoordinator.initialize()
     return async () => {
+      await remoteCoordinator.close()
       await lanController.close()
       unregister()
     }

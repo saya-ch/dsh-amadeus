@@ -185,6 +185,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
 
   /** Derive the owning session id from the request agent, if present. */
   private static sessionIdOf(agent: unknown): string | undefined {
+    if (typeof agent === 'string') return agent
     if (agent === null || typeof agent !== 'object') return undefined
     const record = agent as { session?: { id?: unknown }; id?: unknown }
     if (typeof record.session?.id === 'string') return record.session.id

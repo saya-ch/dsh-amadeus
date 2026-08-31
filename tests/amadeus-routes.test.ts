@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it, vi } from 'vitest'
 import type { Readable } from 'node:stream'
 import { createAmadeusExtension } from '../src/amadeus-extension.js'
@@ -235,5 +238,30 @@ describe('amadeus extension routes', () => {
     const response = await handler(jsonBody({ method: 'POST', pathname: '/choice/cancel' }, { choiceId: 'cq_missing' }))
     expect(response.status).toBe(404)
     expect(choices.cancel).not.toHaveBeenCalled()
+  })
+
+  it('POST /choice/cancel rejects the pending answerer', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'amw-route-e2e-'))
+    try {
+      const { AmadeusChoicesAdapter } = await import('../src/amadeus-choices.js')
+      const ctx = { on: () => {} } as any
+      const adapter = new AmadeusChoicesAdapter(ctx, dir)
+      const pushed: any[] = []
+      adapter.registerStream('sess-e2e', frame => pushed.push(frame))
+      const pending = adapter.answerRequest({
+        questions: [{ id: 'q1', question: '选吗', options: [{ label: 'A' }, { label: 'B' }] }],
+        agent: { session: { id: 'sess-e2e' } },
+      })
+      for (let attempt = 0; attempt < 50 && pushed.length === 0; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
+      expect(pushed).toHaveLength(1)
+      const choiceId = (pushed[0] as { choiceId: string }).choiceId
+      const handler = makeHandler({ choices: adapter } as never)
+      const response = await handler(jsonBody({ method: 'POST', pathname: '/choice/cancel' }, { choiceId }))
+      expect(response.status).toBe(200)
+      expect(JSON.parse(response.body as string)).toEqual({ ok: true })
+      await expect(pending).rejects.toThrow('choice-cancelled')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })
