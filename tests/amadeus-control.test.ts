@@ -75,5 +75,19 @@ describe('control routes', () => {
     const parsed = JSON.parse(routes.controlGet().body) as { remote?: { provider: string; enabled: boolean; state: string; origin?: string } }
     expect(parsed.remote).toEqual({ provider: 'frp', enabled: true, state: 'running', origin: 'https://amw.example.com' })
   })
+
+  it('filters pid from remote status', () => {
+    const routes = new AmadeusControlRoutes({
+      isRunning: () => true,
+      gateway: () => ({ origin: 'https://127.0.0.1:3444', devices: () => [], pairingStatus: () => ({ open: false }) }),
+      remoteProvider: () => 'frp',
+      remoteStatus: () => ({ enabled: true, state: 'running', origin: 'https://amw.example.com', pid: 12345 }),
+    })
+    const body = routes.controlGet().body
+    expect(body).not.toContain('"pid"')
+    const parsed = JSON.parse(body) as { remote?: Record<string, unknown> }
+    expect(parsed.remote).toEqual({ provider: 'frp', enabled: true, state: 'running', origin: 'https://amw.example.com' })
+    expect(parsed.remote).not.toHaveProperty('pid')
+  })
 })
 

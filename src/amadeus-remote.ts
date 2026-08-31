@@ -197,6 +197,7 @@ export class FrpController implements AmadeusRemoteController {
       this.enabled = false
       this.originValue = undefined
       this.errorCodeValue = undefined
+      await rm(join(this.dir, 'frpc-run.toml'), { force: true }).catch(() => {})
       return
     }
     if (this.enabled) return
@@ -237,10 +238,10 @@ export class FrpController implements AmadeusRemoteController {
   /** Render an frpc TOML runtime config mirroring the validated FrpRuntime. */
   private renderConfig(config: FrpRuntime): string {
     const lines = [
-      `serverAddr = "${config.serverAddress}"`,
+      `serverAddr = ${JSON.stringify(config.serverAddress)}`,
       `serverPort = ${config.serverPort}`,
     ]
-    if (config.token !== undefined) lines.push(`auth.token = "${config.token}"`)
+    if (config.token !== undefined) lines.push(`auth.token = ${JSON.stringify(config.token)}`)
     lines.push(
       '',
       '[[proxies]]',
@@ -257,7 +258,7 @@ export class FrpController implements AmadeusRemoteController {
   private probePublicOrigin(origin: string): void {
     try {
       const parsed = new URL(origin)
-      const socket = createConnection({ host: parsed.hostname, port: parsed.port === '' ? 443 : Number(parsed.port) })
+      const socket = createConnection({ host: parsed.hostname, port: parsed.port === '' ? (parsed.protocol === 'https:' ? 443 : 80) : Number(parsed.port) })
       socket.unref()
       const fail = (): void => {
         socket.destroy()
@@ -265,6 +266,7 @@ export class FrpController implements AmadeusRemoteController {
       }
       socket.setTimeout(this.reachabilityTimeoutMs, fail)
       socket.once('connect', () => {
+        if (this.child === undefined || this.errorCodeValue !== undefined) return
         socket.destroy()
         this.originValue = origin
       })

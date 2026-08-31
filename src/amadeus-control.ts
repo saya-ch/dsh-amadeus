@@ -47,7 +47,7 @@ export class AmadeusControlRoutes {
   /** GET /api/amadeus/control — running flag plus real devices and pairing window. */
   controlGet(): { status: number; body: string } {
     const gateway = this.options.gateway()
-    const remoteStatus = this.options.remoteStatus()
+    const remoteStatus = this.options.remoteStatus() as AmadeusRemoteStatus | undefined
     const state: AmadeusControlState = {
       running: this.options.isRunning(),
       devices: gateway?.devices().map(device => ({
@@ -57,7 +57,10 @@ export class AmadeusControlRoutes {
       })) ?? [],
       pairingOpen: gateway?.pairingStatus().open ?? false,
       ...(gateway === undefined ? {} : { origin: gateway.origin }),
-      ...(remoteStatus === undefined ? {} : { remote: { provider: this.options.remoteProvider(), ...remoteStatus } }),
+      ...(remoteStatus === undefined ? {} : (() => {
+        const { pid: _pid, ...safe } = remoteStatus as AmadeusRemoteStatus
+        return { remote: { provider: this.options.remoteProvider(), ...safe } }
+      })()),
     }
     return { status: 200, body: JSON.stringify(state) }
   }
