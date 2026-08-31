@@ -12,3 +12,4 @@ app/amadeus-android/.gradle/
 app/amadeus-android/.kotlin/
 app/amadeus-android/app/.cxx/
 app/amadeus-android/build/
+app/amadeus-android/local.properties
