@@ -49,6 +49,7 @@ function choiceAdapter() {
   return {
     create: vi.fn<ChoiceAdapter['create']>().mockResolvedValue(undefined),
     resolve: vi.fn<ChoiceAdapter['resolve']>().mockResolvedValue(undefined),
+    cancel: vi.fn<ChoiceAdapter['cancel']>().mockResolvedValue(undefined),
     get: vi.fn<ChoiceAdapter['get']>().mockResolvedValue({ question: 'Continue?', options: ['Yes', 'No'] }),
   } satisfies ChoiceAdapter
 }
@@ -99,18 +100,15 @@ function registry(): MobileAccessService {
 }
 
 describe('Amadeus mobile extension routes', () => {
-  it('reports the shared connection and only installed capabilities', async () => {
+  it('reports only the installed capabilities', async () => {
     const extension = createAmadeusExtension()
     expect(extension).toMatchObject({ schemaVersion: 1, id: 'amadeus', name: 'Amadeus: Whale', version: '0.1.0' })
     expectJson(await call(extension, 'GET', '/status'), 200, {
-      id: 'amadeus',
-      version: '0.1.0',
-      connection: 'dsh-mobile',
-      capabilities: { tags: true, sessions: false, reports: false, choices: false },
+      capabilities: { sessions: false, reports: false, choices: false },
     })
     const configured = createAmadeusExtension({ sessions: sessionAdapter(), reports: reportAdapter(), choices: choiceAdapter() })
-    expect(decoded(await call(configured, 'GET', '/status'))).toMatchObject({
-      capabilities: { tags: true, sessions: true, reports: true, choices: true },
+    expect(decoded(await call(configured, 'GET', '/status'))).toEqual({
+      capabilities: { sessions: true, reports: true, choices: true },
     })
   })
 
@@ -167,14 +165,14 @@ describe('Amadeus mobile extension routes', () => {
     expectJson(await call(extension, 'GET', '/sessions'), 200, { sessions: [session] })
     expect(sessions.list).toHaveBeenCalledExactlyOnceWith('amadeus')
     expectJson(await call(extension, 'POST', '/sessions', { body: encoded({ mode: 'amadeus', title: 'My saved session' }) }), 201, { session })
-    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', 'My saved session')
+    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', 'My saved session', undefined)
     expect(sessions.get).not.toHaveBeenCalled()
   })
 
   it('passes an omitted title as undefined without inventing a saved session', async () => {
     const sessions = sessionAdapter()
     expectJson(await call(createAmadeusExtension({ sessions }), 'POST', '/sessions', { body: encoded({}) }), 201, { session })
-    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', undefined)
+    expect(sessions.create).toHaveBeenCalledExactlyOnceWith('amadeus', undefined, undefined)
   })
 
   it.each([42, null, 'x'.repeat(201)])('rejects invalid session titles before creation: %j', async title => {
@@ -301,7 +299,7 @@ describe('Amadeus in the real DSH Mobile registry', () => {
     const reports = reportAdapter()
     service.registerExtension(createAmadeusExtension({ reports }))
     const response = await service.route('amadeus', 'GET', '/reports/report_fixture', request('GET', '/reports/report_fixture'))
-    expectJson(response, 200, { report })
+    expectJson(response, 200, report)
     expect(reports.get).toHaveBeenCalledExactlyOnceWith('report_fixture')
   })
 
@@ -352,7 +350,7 @@ describe('Amadeus in the real DSH Mobile registry', () => {
     expect(service.manifest().map(entry => entry.id)).toEqual(['amadeus', 'other-extension'])
     const response = await context.mobileAccess.route('amadeus', 'GET', '/status', request('GET', '/status'))
     expect(response.status).toBe(200)
-    expect(decoded(response)).toMatchObject({ connection: 'dsh-mobile' })
+    expect(decoded(response)).toEqual({ capabilities: { sessions: false, reports: false, choices: false } })
     await remounted.dispose()
     expect(service.manifest().map(entry => entry.id)).toEqual(['other-extension'])
     expect(stopLocal).not.toHaveBeenCalled()

@@ -1,6 +1,8 @@
 import type { MobileExtensionDefinition, MobileHostRoute, MobileRouteRequest, MobileRouteResponse } from './extensions.js'
+import { Readable } from 'node:stream'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import { ensureAmadeusTag, parseAmadeusSegments, parseAmadeusTag } from './amadeus-tags.js'
+import type { AmadeusPageMessages } from './amadeus-sessions.js'
 
 /** Stable namespace within the Amadeus gateway. */
 export const AMADEUS_EXTENSION_ID = 'amadeus'
@@ -26,7 +28,7 @@ export interface AmadeusReport {
 export interface AmadeusGatewayOptions {
   readonly sessions?: {
     list(mode: string): Promise<AmadeusSessionSummary[]>
-    create(mode: string, title?: string): Promise<AmadeusSessionSummary>
+    create(mode: string, title?: string, workspaceId?: string): Promise<AmadeusSessionSummary>
     get(id: string): Promise<AmadeusSessionSummary | null>
   }
   readonly reports?: {
@@ -37,7 +39,29 @@ export interface AmadeusGatewayOptions {
   readonly choices?: {
     create(choiceId: string, question: string, options: string[]): Promise<void>
     resolve(choiceId: string, selected: string): Promise<void>
+    cancel(choiceId: string): Promise<void>
     get(id: string): Promise<{ question: string; options: string[] } | null>
+  }
+  /** Session mutating commands backing the rename/archive/prompt/cancel/page routes. */
+  readonly commands?: {
+    assertOwned(id: string): Promise<boolean>
+    rename(id: string, title: string): Promise<void>
+    archive(id: string): Promise<void>
+    prompt(id: string, text: string): Promise<void>
+    cancel(id: string): Promise<void>
+    page(id: string, beforeSeq?: number): Promise<AmadeusPageMessages>
+  }
+  /** Workspace listing for the GET /workspaces route. */
+  readonly workspaces?: {
+    list(): Promise<Array<{ id: string; path: string; title: string }>>
+  }
+  /** Persisted previews for the GET /previews/:id route. */
+  readonly previews?: {
+    get(id: string): Promise<{ id: string; type: string; content: string; title: string } | null>
+  }
+  /** Session follow stream bridge for the GET /stream/:sessionId SSE route. */
+  readonly stream?: {
+    open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void>
   }
 }
 
@@ -69,12 +93,18 @@ function title(value: unknown): string | undefined {
   return value
 }
 
+function workspaceId(value: unknown): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length === 0 || value.length > 128) return badRequest()
+  return value
+}
+
 function id(value: unknown): string {
   if (typeof value !== 'string' || !ID_PATTERN.test(value)) return badRequest()
   return value
 }
 
-function unavailable(capability: 'sessions' | 'reports' | 'choices'): never {
+function unavailable(capability: 'sessions' | 'reports' | 'choices' | 'commands' | 'workspaces' | 'previews' | 'stream'): never {
   throw new AmadeusRequestError(503, `amadeus_${capability}_unavailable`)
 }
 
@@ -110,10 +140,11 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
     description: 'Independent Amadeus business routes on the Amadeus gateway',
     routes: [
       route('GET', '/status', () => json({
-        id: AMADEUS_EXTENSION_ID,
-        version: '0.1.0',
-        connection: 'amadeus',
-        capabilities: { tags: true, sessions: options.sessions !== undefined, reports: options.reports !== undefined, choices: options.choices !== undefined },
+        capabilities: {
+          sessions: options.sessions !== undefined,
+          reports: options.reports !== undefined,
+          choices: options.choices !== undefined,
+        },
       })),
       route('GET', '/sessions', async request => {
         const mode = request.query.get('mode') ?? AMADEUS_MODE_ID
@@ -125,9 +156,99 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const body = readObject(request)
         if (body.mode !== undefined && body.mode !== AMADEUS_MODE_ID) return badRequest()
         const sessionTitle = title(body.title)
+        const sessionWorkspaceId = workspaceId(body.workspaceId)
         const sessions = options.sessions ?? unavailable('sessions')
-        return json({ session: await sessions.create(AMADEUS_MODE_ID, sessionTitle) }, 201)
+        return json({ session: await sessions.create(AMADEUS_MODE_ID, sessionTitle, sessionWorkspaceId) }, 201)
       }),
+      route('POST', '/sessions', async request => {
+        const tail = request.pathname.slice('/sessions/'.length)
+        const slash = tail.indexOf('/')
+        if (slash < 0) return badRequest()
+        const sessionId = id(tail.slice(0, slash))
+        const action = tail.slice(slash + 1)
+        const commands = options.commands ?? unavailable('commands')
+        if (!(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
+        if (action === 'rename') {
+          const body = readObject(request)
+          const sessionTitle = title(body.title)
+          if (sessionTitle === undefined || sessionTitle.length === 0) return badRequest()
+          await commands.rename(sessionId, sessionTitle)
+        } else if (action === 'archive') {
+          await commands.archive(sessionId)
+        } else if (action === 'prompt') {
+          const body = readObject(request)
+          if (typeof body.text !== 'string' || body.text.length === 0 || body.text.length > 8192) return badRequest()
+          await commands.prompt(sessionId, body.text)
+        } else if (action === 'cancel') {
+          await commands.cancel(sessionId)
+        } else {
+          return badRequest()
+        }
+        return json({ ok: true })
+      }, 'prefix'),
+      route('GET', '/sessions', async request => {
+        const tail = request.pathname.slice('/sessions/'.length)
+        const slash = tail.indexOf('/')
+        if (slash < 0 || tail.slice(slash + 1) !== 'page') return badRequest()
+        const sessionId = id(tail.slice(0, slash))
+        const commands = options.commands ?? unavailable('commands')
+        if (!(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
+        const rawBefore = request.query.get('beforeSeq')
+        if (rawBefore !== null && !/^\d{1,15}$/u.test(rawBefore)) return badRequest()
+        const beforeSeq = rawBefore === null ? undefined : Number(rawBefore)
+        return json(beforeSeq === undefined ? await commands.page(sessionId) : await commands.page(sessionId, beforeSeq))
+      }, 'prefix'),
+      route('GET', '/workspaces', async () => {
+        const workspaces = options.workspaces ?? unavailable('workspaces')
+        return json({ workspaces: await workspaces.list() })
+      }),
+      route('GET', '/previews', async request => {
+        const previewId = id(request.pathname.slice('/previews/'.length))
+        const previews = options.previews ?? unavailable('previews')
+        const preview = await previews.get(previewId)
+        if (preview === null) throw new AmadeusRequestError(404, 'not_found')
+        return json(preview)
+      }, 'prefix'),
+      route('GET', '/stream', async request => {
+        const sessionId = id(request.pathname.slice('/stream/'.length))
+        const commands = options.commands
+        if (commands !== undefined && !(await commands.assertOwned(sessionId))) throw new AmadeusRequestError(404, 'not_found')
+        const stream = options.stream ?? unavailable('stream')
+        const source = new Readable({ read() {} })
+        let closed = false
+        let heartbeat: NodeJS.Timeout | undefined
+        let hubClose: (() => void) | undefined
+        const push = (chunk: string): void => {
+          if (!closed && !source.destroyed) source.push(chunk)
+        }
+        const writeFrame = (data: string): void => {
+          push(`data: ${data}\n\n`)
+        }
+        const endStream = (): void => {
+          if (closed) return
+          closed = true
+          if (heartbeat !== undefined) clearInterval(heartbeat)
+          request.signal.removeEventListener('abort', onAbort)
+          if (hubClose !== undefined) void hubClose()
+          if (!source.destroyed) source.push(null)
+        }
+        const onAbort = (): void => endStream()
+        request.signal.addEventListener('abort', onAbort, { once: true })
+        push('retry: 2000\n')
+        heartbeat = setInterval(() => push(': heartbeat\n\n'), 15_000)
+        heartbeat.unref()
+        source.once('close', endStream)
+        void stream.open(sessionId, writeFrame, endStream).then(close => {
+          hubClose = close
+          if (closed) void close()
+        }).catch(() => endStream())
+        return {
+          status: 200,
+          contentType: 'text/event-stream; charset=utf-8',
+          headers: { 'Cache-Control': 'no-store' },
+          body: source,
+        }
+      }, 'prefix'),
       route('GET', '/reports', async () => {
         const reports = options.reports ?? unavailable('reports')
         return json({ reports: await reports.list() })
@@ -137,7 +258,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const reports = options.reports ?? unavailable('reports')
         const report = await reports.get(reportId)
         if (report === null) throw new AmadeusRequestError(404, 'not_found')
-        return json({ report })
+        return json(report)
       }, 'prefix'),
       route('POST', '/reports', async request => {
         const body = readObject(request)
@@ -158,6 +279,15 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         if (pending === null) throw new AmadeusRequestError(404, 'not_found')
         if (!pending.options.includes(body.selected)) return badRequest()
         await choices.resolve(choiceId, body.selected)
+        return json({ ok: true })
+      }),
+      route('POST', '/choice/cancel', async request => {
+        const body = readObject(request)
+        const choiceId = id(body.choiceId)
+        const choices = options.choices ?? unavailable('choices')
+        const pending = await choices.get(choiceId)
+        if (pending === null) throw new AmadeusRequestError(404, 'not_found')
+        await choices.cancel(choiceId)
         return json({ ok: true })
       }),
       route('POST', '/tag/ensure', request => {
