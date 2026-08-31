@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { createServer } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  AmadeusRemoteCoordinator, FrpController, JsonRemoteStore, parseFrpConfig,
+  AmadeusRemoteCoordinator, FrpController, JsonRemoteStore, NoopRemoteController, parseFrpConfig,
   type AmadeusRemoteController, type SpawnHandle,
 } from '../src/amadeus-remote.js'
 
@@ -60,6 +60,36 @@ function controllableSpawn() {
     triggerExit: (code) => { exitHandler?.(code) },
   }
   return { handle, spawn: (): SpawnHandle => handle }
+}
+
+interface ControllableHandle {
+  handle: SpawnHandle & { triggerExit(code?: number | null): void; triggerError(): void }
+  killed: boolean
+}
+
+function sequenceSpawn() {
+  const instances: ControllableHandle[] = []
+  const spawn = (_command: string, _args: string[], _options: object): SpawnHandle => {
+    let exitHandler: ((code?: number | null, signal?: string | null) => void) | undefined
+    let errorHandler: (() => void) | undefined
+    const instance: ControllableHandle = {
+      handle: {
+        pid: 1000 + instances.length,
+        on: (event: string, cb) => {
+          if (event === 'exit') exitHandler = cb
+          if (event === 'error') errorHandler = cb
+          return instance.handle
+        },
+        kill: () => { instance.killed = true; return true },
+        triggerExit: (code) => { exitHandler?.(code) },
+        triggerError: () => { errorHandler?.() },
+      },
+      killed: false,
+    }
+    instances.push(instance)
+    return instance.handle
+  }
+  return { spawn, instances }
 }
 
 describe('json remote store', () => {
@@ -254,5 +284,68 @@ describe('frp controller', () => {
     expect(() => parseFrpConfig({ serverAddress: 'x', serverPort: 0 })).toThrow('serverPort')
     expect(() => parseFrpConfig({ serverAddress: 'x', serverPort: 65536 })).toThrow('serverPort')
     expect(() => parseFrpConfig([])).toThrow('frp config must be an object')
+  })
+
+  it('ignores a stale exit from a previous child after respawn', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const { spawn, instances } = sequenceSpawn()
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    const first = instances[0]!
+    await frp.setEnabled(false)
+    expect(first.killed).toBe(true)
+    await frp.setEnabled(true)
+    const second = instances[1]!
+    expect(frp.status()).toEqual({ enabled: true, state: 'running', pid: second.handle.pid })
+    first.handle.triggerExit(1)
+    expect(frp.status()).toEqual({ enabled: true, state: 'running', pid: second.handle.pid })
+    expect(frp.status().errorCode).toBeUndefined()
+  })
+
+  it('ignores a stale error from a previous child after respawn', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com', serverPort: 7000 }))
+    const { spawn, instances } = sequenceSpawn()
+    const frp = new FrpController(dir, join(dir, 'frp.json'), { spawn })
+    await frp.initialize()
+    await frp.setEnabled(true)
+    const first = instances[0]!
+    await frp.setEnabled(false)
+    await frp.setEnabled(true)
+    const second = instances[1]!
+    first.handle.triggerError()
+    expect(frp.status()).toEqual({ enabled: true, state: 'running', pid: second.handle.pid })
+    expect(frp.status().errorCode).toBeUndefined()
+  })
+
+  it('reports invalid_frp_config when the config file is corrupt', async () => {
+    await writeFile(join(dir, 'frp.json'), 'not json {')
+    const frp = new FrpController(dir, join(dir, 'frp.json'))
+    await frp.initialize()
+    expect(frp.status()).toEqual({ enabled: false, state: 'unconfigured', errorCode: 'invalid_frp_config' })
+  })
+
+  it('reports invalid_frp_config when the config is missing required fields', async () => {
+    await writeFile(join(dir, 'frp.json'), JSON.stringify({ serverAddress: 'example.com' }))
+    const frp = new FrpController(dir, join(dir, 'frp.json'))
+    await frp.initialize()
+    expect(frp.status()).toEqual({ enabled: false, state: 'unconfigured', errorCode: 'invalid_frp_config' })
+  })
+})
+
+describe('noop remote controller', () => {
+  it('is off and throws on enable', async () => {
+    const noop = new NoopRemoteController()
+    await noop.initialize()
+    expect(noop.status()).toEqual({ enabled: false, state: 'off' })
+    await expect(noop.setEnabled(true)).rejects.toThrow('unsupported provider')
+    await noop.setEnabled(false).catch(() => {})
+    await noop.close()
+  })
+
+  it('setEnabled throws for both on and off', async () => {
+    const noop = new NoopRemoteController()
+    await expect(noop.setEnabled(true)).rejects.toThrow('unsupported provider: remote disabled')
+    await expect(noop.setEnabled(false)).rejects.toThrow('unsupported provider: remote disabled')
   })
 })

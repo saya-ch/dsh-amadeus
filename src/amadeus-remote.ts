@@ -164,7 +164,13 @@ export class FrpController implements AmadeusRemoteController {
   }
 
   status(): AmadeusRemoteStatus {
-    if (this.config === undefined) return { enabled: false, state: 'unconfigured' }
+    if (this.config === undefined) {
+      return {
+        enabled: false,
+        state: 'unconfigured',
+        ...(this.errorCodeValue === undefined ? {} : { errorCode: this.errorCodeValue }),
+      }
+    }
     if (!this.enabled) return { enabled: false, state: 'off' }
     if (this.child === undefined || this.pidValue === undefined) {
       return {
@@ -205,10 +211,12 @@ export class FrpController implements AmadeusRemoteController {
     this.originValue = undefined
     this.errorCodeValue = undefined
     child.on('exit', (code) => {
+      if (this.child !== child) return
       this.pidValue = undefined
       this.errorCodeValue = code === 0 ? undefined : `frpc_exit_${code === undefined || code === null ? 'signal' : code}`
     })
     child.on('error', () => {
+      if (this.child !== child) return
       this.pidValue = undefined
       if (this.errorCodeValue === undefined) this.errorCodeValue = 'frpc_spawn_error'
     })
@@ -264,5 +272,24 @@ export class FrpController implements AmadeusRemoteController {
     } catch {
       if (this.errorCodeValue === undefined) this.errorCodeValue = 'endpoint_unreachable'
     }
+  }
+}
+
+/** Placeholder controller for providers not yet wired (tailscale/cpolar). */
+export class NoopRemoteController implements AmadeusRemoteController {
+  async initialize(): Promise<void> {
+    // no-op
+  }
+
+  status(): AmadeusRemoteStatus {
+    return { enabled: false, state: 'off' }
+  }
+
+  async setEnabled(on: boolean): Promise<void> {
+    throw new Error('unsupported provider: remote disabled')
+  }
+
+  async close(): Promise<void> {
+    // no-op
   }
 }
