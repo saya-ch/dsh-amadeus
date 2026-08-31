@@ -6,13 +6,23 @@ data class PairingScanTarget(val origin: GatewayOrigin, val instanceId: String, 
 
     fun parse(raw: String): PairingScanTarget {
       val trimmed = raw.trim()
-      PAIR_URL.matchEntire(trimmed)?.let { m ->
-        val origin = GatewayOrigin.parse("https://${m.groupValues[1]}")
-        return PairingScanTarget(origin, m.groupValues[2], m.groupValues[3])
+      // (a) A bare origin? It has a gateway address but no pairing key yet.
+      val isBareOrigin = try {
+        GatewayOrigin.parse(trimmed)
+        true
+      } catch (error: IllegalArgumentException) {
+        false
       }
-      // Fall back to a bare pairing key: origin is unknown until paired, so require it separately.
-      PairingKey.parse(trimmed) // throws on malformed; validates instanceId/token shapes
-      throw IllegalArgumentException("a bare appKey needs the gateway address; use a pairing URL or scan")
+      if (isBareOrigin) throw IllegalArgumentException("origin without pairing key: $trimmed")
+      // (b) A full pairing URL?
+      val match = PAIR_URL.matchEntire(trimmed)
+      if (match != null) {
+        val origin = GatewayOrigin.parse("https://${match.groupValues[1]}")
+        return PairingScanTarget(origin, match.groupValues[2], match.groupValues[3])
+      }
+      // (c) A bare appKey? It has no gateway address, so the UI must combine one.
+      PairingKey.parse(trimmed)
+      throw IllegalArgumentException("appKey without gateway origin; please provide pairing URL or scan QR")
     }
   }
 }
