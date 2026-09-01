@@ -42,6 +42,7 @@ fun TheatreScreen(
   onOpenSaveSlot: () -> Unit,
   onReplayDemo: () -> Unit,
   onDisconnect: () -> Unit,
+  onReconnect: () -> Unit = {},
   demoMode: Boolean = false,
   onDemoFinished: () -> Unit = {},
 ) {
@@ -117,6 +118,7 @@ fun TheatreScreen(
       onClose = { viewModel.closeOverlay() },
       onReplayDemo = onReplayDemo,
       onDisconnect = onDisconnect,
+      onReconnect = onReconnect,
       onResolveChoice = { choice, label -> viewModel.resolveChoice(choice, label) },
     )
   }

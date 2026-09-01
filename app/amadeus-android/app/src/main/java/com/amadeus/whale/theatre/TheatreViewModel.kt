@@ -34,7 +34,11 @@ class TheatreViewModel(
   private val log: SessionLog = SessionLog(),
   private val stateMachine: SessionStateMachine = SessionStateMachine(log),
   private val choiceRepository: ChoiceRepository? = null,
+  private val haptics: com.amadeus.whale.platform.Haptics? = null,
+  private var hapticsEnabled: Boolean = true,
 ) : ViewModel() {
+
+  fun setHapticsEnabled(enabled: Boolean) { this.hapticsEnabled = enabled }
 
   private val _uiState = MutableStateFlow(TheatreUiState())
   val uiState: StateFlow<TheatreUiState> = _uiState.asStateFlow()
@@ -50,6 +54,7 @@ class TheatreViewModel(
   /** 发送消息（真实模式）。 */
   fun send(text: String) {
     sender?.invoke(text)
+    if (hapticsEnabled) haptics?.sendVibration()  // 产品 1.11：发送消息时短震（可关）
     stateMachine.send()
     _uiState.value = _uiState.value.copy(typing = false, dialogue = null)
   }

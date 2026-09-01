@@ -1,6 +1,8 @@
 package com.amadeus.whale.screen
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,6 +109,7 @@ fun SaveSlotScreen(
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SessionCard(
   session: AmadeusSession,
@@ -112,12 +118,23 @@ private fun SessionCard(
   onDelete: () -> Unit,
 ) {
   val colors = LocalAmadeusColors.current
+  var menuOpen by remember { mutableStateOf(false) }
+  var renaming by remember { mutableStateOf(false) }
+  var renameText by remember { mutableStateOf(session.title) }
+
   Card(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
     colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
   ) {
-    Column(modifier = Modifier.clickable(onClick = onClick).padding(14.dp)) {
+    Column(
+      modifier = Modifier
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = { menuOpen = true },
+        )
+        .padding(14.dp),
+    ) {
       Text(
         text = session.title.ifEmpty { "未命名" },
         color = colors.primaryText,
@@ -132,6 +149,46 @@ private fun SessionCard(
         fontSize = 12.sp,
       )
     }
+  }
+  // 长按菜单：改名/删除（产品 1.10：轻量，不打断读档仪式）
+  DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+    DropdownMenuItem(
+      text = { Text("改名") },
+      onClick = {
+        menuOpen = false
+        renaming = true
+      },
+    )
+    DropdownMenuItem(
+      text = { Text("删除") },
+      onClick = {
+        menuOpen = false
+        onDelete()
+      },
+    )
+  }
+  // 改名对话框（轻量）
+  if (renaming) {
+    androidx.compose.material3.AlertDialog(
+      onDismissRequest = { renaming = false },
+      title = { Text("改名") },
+      text = {
+        TextField(
+          value = renameText,
+          onValueChange = { renameText = it },
+          singleLine = true,
+        )
+      },
+      confirmButton = {
+        Button(onClick = {
+          renaming = false
+          onRename(renameText)
+        }) { Text("确定") }
+      },
+      dismissButton = {
+        OutlinedButton(onClick = { renaming = false }) { Text("取消") }
+      },
+    )
   }
 }
 

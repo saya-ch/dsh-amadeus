@@ -72,6 +72,20 @@ describe('stream hub', () => {
     expect(payload.options).toEqual([{ label: 'A' }, { label: 'B' }])
   })
 
+  it('emits an activity frame for tool/call (product 1.5.1: tools go to event log)', async () => {
+    const hub = new AmadeusStreamHub(framesFor(
+      { type: 'event', event: { type: 'tool/call', data: { callId: 'c1', name: 'read_file', arguments: '{"path":"/tmp/a"}' } } },
+    ))
+    const written: string[] = []
+    const close = await hub.open('s1', d => written.push(d))
+    await flush()
+    await close()
+    const frames = written.map(line => JSON.parse(line) as { type: string; kind?: string; title?: string; detail?: string })
+    expect(frames[0]!.type).toBe('activity')
+    expect(frames[0]!.kind).toBe('tool')
+    expect(frames[0]!.title).toContain('read_file')
+  })
+
   it('emits ended when the follow stream finishes', async () => {
     const hub = new AmadeusStreamHub(framesFor())
     const written: string[] = []

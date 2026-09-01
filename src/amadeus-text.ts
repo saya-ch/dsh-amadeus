@@ -28,9 +28,10 @@ function blockText(block: AmadeusContentBlock): string[] {
     case 'reasoning':
       return []
     case 'tool-call':
-      return [block.name ?? '', block.arguments ?? '']
+      // 产品 1.5：工具调用不进对话（是幕后事件，进事件流小窗）
+      return []
     case 'tool-result':
-      return (block.content ?? []).flatMap(blockText)
+      return []
     default:
       // ContentBlockMap is merge-extensible: unknown blocks stay non-textual.
       return []

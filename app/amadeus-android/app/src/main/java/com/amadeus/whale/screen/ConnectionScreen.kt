@@ -72,7 +72,17 @@ fun ConnectionScreen(
       ui = ui.copy(pairing = true, error = null)
       scope.launch {
         val outcome = authService.pair(raw)
-        handlePairOutcome(outcome) { sessionId -> onPaired(sessionId) }
+        when (outcome) {
+          is PairResult.Success -> {
+            ui = ui.copy(pairing = false, success = true)
+            onPaired(null)
+          }
+          is PairResult.Failure -> {
+            // 产品 1.12：配对失败演出“她没找到你的电脑”
+            ui = ui.copy(pairing = false, error = outcome.message)
+          }
+          PairResult.Cancelled -> ui = ui.copy(pairing = false)
+        }
       }
     }
   }
@@ -81,17 +91,28 @@ fun ConnectionScreen(
     ui = ui.copy(pairing = true, error = null)
     scope.launch {
       val outcome = authService.pair(rawInput)
-      handlePairOutcome(outcome) { sessionId -> onPaired(sessionId) }
+      when (outcome) {
+        is PairResult.Success -> {
+          ui = ui.copy(pairing = false, success = true)
+          onPaired(null)
+        }
+        is PairResult.Failure -> ui = ui.copy(pairing = false, error = outcome.message)
+        PairResult.Cancelled -> ui = ui.copy(pairing = false)
+      }
     }
   }
 
   Box(modifier = Modifier.fillMaxSize().background(colors.screenBackground)) {
+    // 连接剧场：背景 + 立绘（产品 1.12：鲸鱼娘等你接入）
+    com.amadeus.whale.theatre.TheatreStage(
+      background = "bg-deepseek-seaside-study",
+      mood = if (ui.success) com.amadeus.whale.domain.model.AmadeusMood.happy else com.amadeus.whale.domain.model.AmadeusMood.shy,
+      sprite = if (ui.success) com.amadeus.whale.domain.model.AmadeusSprite.wag else com.amadeus.whale.domain.model.AmadeusSprite.shy,
+    )
     Column(
       modifier = Modifier.align(Alignment.Center).padding(32.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      // TODO: 背景 + 立绘（鲸鱼娘等你接入，产品 1.12/架构 3.16）
-      Text(text = "🐳", fontSize = 72.sp)
       Text(
         text = when {
           ui.pairing -> "正在把鲸鱼娘接到你的电脑上…"
@@ -102,6 +123,10 @@ fun ConnectionScreen(
         color = colors.primaryText,
         fontSize = 16.sp,
         textAlign = TextAlign.Center,
+        modifier = Modifier.background(
+          androidx.compose.ui.graphics.Color(0xCCFFFDF8),
+          androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        ).padding(12.dp),
       )
       if (ui.pairing) {
         Spacer(Modifier.height(16.dp))
@@ -141,20 +166,6 @@ fun ConnectionScreen(
         }
       }
     }
-  }
-}
-
-private fun handlePairOutcome(
-  outcome: PairResult,
-  onPaired: (String?) -> Unit,
-) {
-  when (outcome) {
-    is PairResult.Success -> onPaired(null)
-    is PairResult.Failure -> {
-      // TODO: 失败也显示"她没找到你的电脑"演出（产品 1.12）
-      onPaired(null)
-    }
-    PairResult.Cancelled -> Unit
   }
 }
 

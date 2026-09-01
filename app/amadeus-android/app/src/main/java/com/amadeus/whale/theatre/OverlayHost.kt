@@ -46,6 +46,7 @@ fun BoxScope.OverlayHost(
   onClose: () -> Unit,
   onReplayDemo: () -> Unit,
   onDisconnect: () -> Unit,
+  onReconnect: () -> Unit,
   onResolveChoice: (Choice, String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -59,6 +60,7 @@ fun BoxScope.OverlayHost(
             onClose = onClose,
             onReplayDemo = onReplayDemo,
             onDisconnect = onDisconnect,
+            onReconnect = onReconnect,
             gatewayUrl = gatewayUrl,
           )
         }

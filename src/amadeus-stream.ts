@@ -101,6 +101,10 @@ export class AmadeusStreamHub {
           } else if (event.type === 'session/end') {
             finish(ENDED_REASON_SESSION)
             break
+          } else {
+            // 幕后事件（思考/工具/step/turn 等）→ activity 帧（产品 1.5.1/3.19）
+            const activity = this.toActivity(event)
+            if (activity !== null) write(JSON.stringify(activity))
           }
         }
       } catch {
@@ -121,6 +125,39 @@ export class AmadeusStreamHub {
   private async emitText(event: AmadeusSessionFollowEvent, write: (data: string) => void): Promise<void> {
     const text = assistantMessageText(event.data)
     if (text.length > 0) await this.emit(text, write)
+  }
+
+  /** 幕后事件 → activity 帧（产品 1.5.1：思考/工具/step 进事件流小窗）。 */
+  private toActivity(event: AmadeusSessionFollowEvent): Record<string, unknown> | null {
+    const type = event.type
+    const data = event.data as Record<string, unknown> | undefined
+    if (type === 'tool/call') {
+      const name = String(data?.name ?? 'tool')
+      const args = String(data?.arguments ?? '')
+      return { type: 'activity', kind: 'tool', title: `调用 ${name}`, detail: args.slice(0, 200) }
+    }
+    if (type === 'tool/result') {
+      const name = String(data?.name ?? '')
+      const err = data?.error !== undefined ? '（失败）' : ''
+      return { type: 'activity', kind: 'tool', title: `${name} 完成${err}`, detail: '' }
+    }
+    if (type === 'step/start') {
+      return { type: 'activity', kind: 'step', title: `步骤 ${String(data?.step ?? '')}`, detail: '' }
+    }
+    if (type === 'turn/start') {
+      return { type: 'activity', kind: 'turn', title: `回合 ${String(data?.turn ?? '')} 开始`, detail: '' }
+    }
+    if (type === 'approval/asked') {
+      return { type: 'activity', kind: 'approval', title: '等待批准', detail: String(data?.reason ?? '') }
+    }
+    if (type === 'compaction/start') {
+      return { type: 'activity', kind: 'step', title: '压缩上下文', detail: '' }
+    }
+    if (type === 'todo/write') {
+      const todos = (data?.todos as Array<{ label?: string }> | undefined) ?? []
+      return { type: 'activity', kind: 'step', title: `待办 ${todos.length} 项`, detail: todos.slice(0, 3).map(t => t.label ?? '').join('、') }
+    }
+    return null
   }
 
   private async emit(text: string, write: (data: string) => void): Promise<void> {

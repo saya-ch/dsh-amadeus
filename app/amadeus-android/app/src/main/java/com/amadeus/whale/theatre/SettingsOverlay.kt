@@ -2,6 +2,8 @@ package com.amadeus.whale.theatre
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,16 @@ import com.amadeus.whale.theme.AmadeusThemeId
 import com.amadeus.whale.theme.LocalAmadeusColors
 import kotlinx.coroutines.launch
 
+/** 背景库（产品 1.7：用户可选；素材就位后可扩充）。 */
+private data class BackgroundEntry(val name: String, val label: String)
+
+private val BACKGROUND_LIBRARY = listOf(
+  BackgroundEntry("bg-claude-writing-study", "居家书桌"),
+  BackgroundEntry("bg-deepseek-seaside-study", "海边学习"),
+  BackgroundEntry("bg-gpt-collaboration-workshop", "协作工坊"),
+  BackgroundEntry("palace-night", "月夜宫殿"),
+)
+
 /** 设置分页（架构 3.14）。 */
 private enum class SettingsTab { PERFORMANCE, CONNECTION }
 
@@ -48,6 +60,7 @@ fun SettingsOverlay(
   onClose: () -> Unit,
   onReplayDemo: () -> Unit,
   onDisconnect: () -> Unit,
+  onReconnect: () -> Unit,
   gatewayUrl: String?,
 ) {
   val prefs by prefsStore.flow.collectAsState(initial = com.amadeus.whale.data.store.DevicePrefs())
@@ -87,6 +100,7 @@ fun SettingsOverlay(
       SettingsTab.CONNECTION -> ConnectionTab(
         gatewayUrl = gatewayUrl,
         onDisconnect = onDisconnect,
+        onReconnect = onReconnect,
         colors = colors,
       )
     }
@@ -139,6 +153,40 @@ private fun PerformanceTab(
     }
     Spacer(Modifier.height(12.dp))
 
+    // 背景选择（产品 1.7/1.10：用户可选背景库）
+    Text("背景", color = colors.primaryText, fontSize = 14.sp)
+    LazyRow {
+      items(BACKGROUND_LIBRARY) { bg ->
+        val label = bg.label
+        ThemeChip(label, prefs.background == bg.name) {
+          scope.launch { prefsStore.setBackground(bg.name) }
+        }
+      }
+    }
+    Spacer(Modifier.height(12.dp))
+
+    // BGM（产品 1.11：用户可选/关闭/音量；本期预留接口不播放）
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Text("背景音乐", color = colors.primaryText, fontSize = 14.sp, modifier = Modifier.weight(1f))
+      Switch(
+        checked = prefs.bgmEnabled,
+        onCheckedChange = { scope.launch { prefsStore.setBgmEnabled(it) } },
+      )
+    }
+    if (prefs.bgmEnabled) {
+      Text(
+        text = "音量 ${prefs.bgmVolume}",
+        color = colors.secondaryText,
+        fontSize = 12.sp,
+      )
+      Slider(
+        value = prefs.bgmVolume.toFloat(),
+        onValueChange = { scope.launch { prefsStore.setBgmVolume(it.toInt()) } },
+        valueRange = 0f..100f,
+      )
+    }
+    Spacer(Modifier.height(12.dp))
+
     // 工具进度（产品 1.13）
     Row(verticalAlignment = Alignment.CenterVertically) {
       Text("显示工具进度", color = colors.primaryText, fontSize = 14.sp, modifier = Modifier.weight(1f))
@@ -164,6 +212,7 @@ private fun PerformanceTab(
 private fun ConnectionTab(
   gatewayUrl: String?,
   onDisconnect: () -> Unit,
+  onReconnect: () -> Unit,
   colors: com.amadeus.whale.theme.AmadeusColors,
 ) {
   Column {
@@ -175,6 +224,10 @@ private fun ConnectionTab(
       fontSize = 13.sp,
     )
     Spacer(Modifier.height(16.dp))
+    OutlinedButton(onClick = onReconnect, modifier = Modifier.fillMaxWidth()) {
+      Text("重新配对")
+    }
+    Spacer(Modifier.height(8.dp))
     Button(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) {
       Text("断开连接")
     }

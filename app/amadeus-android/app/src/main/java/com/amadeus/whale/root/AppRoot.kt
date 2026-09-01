@@ -24,6 +24,7 @@ import com.amadeus.whale.screen.TheatreScreen
 import com.amadeus.whale.screen.TitleScreen
 import com.amadeus.whale.theatre.TheatreViewModel
 import com.amadeus.whale.theme.AmadeusTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -102,6 +103,7 @@ fun AppRoot(
         prefsStore = prefsStore,
         authService = authService,
         onOpenSaveSlot = { screen = Screen.SaveSlot },
+        onReconnect = { screen = Screen.Connection(firstPairing = false) },
         onDisconnect = {
           scope.launch {
             authService.currentSession()?.let { authService.disconnect(it.origin.serialized) }
@@ -123,11 +125,20 @@ private fun RealTheatreHost(
   prefsStore: DevicePrefsStore,
   authService: HttpAuthService,
   onOpenSaveSlot: () -> Unit,
+  onReconnect: () -> Unit,
   onDisconnect: () -> Unit,
 ) {
-  val vm = remember(sessionId) { TheatreViewModel(choiceRepository = HttpChoiceRepository(authService.currentSession()?.origin?.serialized ?: "", authService.currentSession()?.client ?: okhttp3.OkHttpClient())) }
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val vm = remember(sessionId) {
+    TheatreViewModel(
+      choiceRepository = HttpChoiceRepository(authService.currentSession()?.origin?.serialized ?: "", authService.currentSession()?.client ?: okhttp3.OkHttpClient()),
+      haptics = com.amadeus.whale.platform.Haptics(context),
+    )
+  }
   val scope = rememberCoroutineScope()
   LaunchedEffect(sessionId) {
+    // 同步触觉开关（产品 1.10：设置里可关）
+    vm.setHapticsEnabled(prefsStore.flow.first().hapticsEnabled)
     // 恢复：历史 10 条 → 最新一条文本为当前展示（架构 3.20）
     val page = repository.page(sessionId)
     page.events.forEach { vm.onStreamEvent(it) }
@@ -144,5 +155,6 @@ private fun RealTheatreHost(
     onOpenSaveSlot = onOpenSaveSlot,
     onReplayDemo = { /* demo 重放走路由，AppRoot 处理 */ },
     onDisconnect = onDisconnect,
+    onReconnect = onReconnect,
   )
 }
