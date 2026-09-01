@@ -130,8 +130,11 @@ private fun RealTheatreHost(
 ) {
   val context = androidx.compose.ui.platform.LocalContext.current
   val vm = remember(sessionId) {
+    val origin = authService.currentSession()?.origin?.serialized ?: ""
+    val client = authService.currentSession()?.client ?: okhttp3.OkHttpClient()
     TheatreViewModel(
-      choiceRepository = HttpChoiceRepository(authService.currentSession()?.origin?.serialized ?: "", authService.currentSession()?.client ?: okhttp3.OkHttpClient()),
+      choiceRepository = com.amadeus.whale.data.HttpChoiceRepository(origin, client),
+      approvalRepository = com.amadeus.whale.data.HttpApprovalRepository(origin, client),
       haptics = com.amadeus.whale.platform.Haptics(context),
     )
   }

@@ -2,11 +2,13 @@ package com.amadeus.whale.theatre
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amadeus.whale.domain.ApprovalRepository
 import com.amadeus.whale.domain.ChoiceRepository
 import com.amadeus.whale.domain.SessionLog
 import com.amadeus.whale.domain.SessionStateMachine
 import com.amadeus.whale.domain.model.Activity
 import com.amadeus.whale.domain.model.AmadeusTag
+import com.amadeus.whale.domain.model.ApprovalRequest
 import com.amadeus.whale.domain.model.Choice
 import com.amadeus.whale.domain.model.Dialogue
 import com.amadeus.whale.domain.model.StreamEvent
@@ -34,6 +36,7 @@ class TheatreViewModel(
   private val log: SessionLog = SessionLog(),
   private val stateMachine: SessionStateMachine = SessionStateMachine(log),
   private val choiceRepository: ChoiceRepository? = null,
+  private val approvalRepository: ApprovalRepository? = null,
   private val haptics: com.amadeus.whale.platform.Haptics? = null,
   private var hapticsEnabled: Boolean = true,
 ) : ViewModel() {
@@ -81,6 +84,10 @@ class TheatreViewModel(
       is StreamEvent.DialogueEvent -> onDialogue(event.dialogue)
       is StreamEvent.ChoiceEvent -> {
         _uiState.value = _uiState.value.copy(typing = false, overlay = OverlayState.ChoicePrompt(event.choice))
+      }
+      is StreamEvent.ApprovalEvent -> {
+        // 方案 B：审批请求弹卡片（批准/拒绝）
+        _uiState.value = _uiState.value.copy(typing = false, overlay = OverlayState.ApprovalPrompt(event.approval))
       }
       is StreamEvent.Ended -> _uiState.value = _uiState.value.copy(typing = false)
       is StreamEvent.ActivityEvent -> {
@@ -143,6 +150,14 @@ class TheatreViewModel(
   fun resolveChoice(choice: Choice, label: String) {
     viewModelScope.launch {
       choiceRepository?.resolve(choice.choiceId, label)
+    }
+    closeOverlay()
+  }
+
+  /** 审批决定（方案 B：批准/拒绝）。 */
+  fun decideApproval(approval: ApprovalRequest, allowed: Boolean) {
+    viewModelScope.launch {
+      approvalRepository?.decide(approval.approvalId, allowed)
     }
     closeOverlay()
   }

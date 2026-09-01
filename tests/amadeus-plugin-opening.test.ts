@@ -66,7 +66,8 @@ describe('opening prompt (方案 A)', () => {
     const stream = {
       open: async (_sessionId: string, _write: (data: string) => void, _onFinished?: () => void) => () => {},
     }
-    const open = bridgeAmadeusChoicesToStream(choices as any, stream as any)
+    const approval = { registerStream: () => () => {} }
+    const open = bridgeAmadeusChoicesToStream(choices as any, approval as any, stream as any)
     const close = await open('s1', data => frames.push(data))
     expect(registered).toHaveLength(1)
     expect(registered[0]!.sessionId).toBe('s1')
@@ -88,7 +89,8 @@ describe('opening prompt (方案 A)', () => {
         return () => {}
       },
     }
-    const open = bridgeAmadeusChoicesToStream(choices as any, stream as any)
+    const approval = { registerStream: () => () => {} }
+    const open = bridgeAmadeusChoicesToStream(choices as any, approval as any, stream as any)
     await open('s1', () => {})
     naturalFinish?.()
     expect(unregistered).toBe(1)
@@ -102,7 +104,8 @@ describe('opening prompt (方案 A)', () => {
     const stream = {
       open: async () => { throw new Error('follow failed') },
     }
-    const open = bridgeAmadeusChoicesToStream(choices as any, stream as any)
+    const approval = { registerStream: () => () => {} }
+    const open = bridgeAmadeusChoicesToStream(choices as any, approval as any, stream as any)
     await expect(open('s1', () => {})).rejects.toThrow('follow failed')
     expect(unregistered).toBe(1)
   })

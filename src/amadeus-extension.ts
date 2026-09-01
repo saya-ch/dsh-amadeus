@@ -63,6 +63,10 @@ export interface AmadeusGatewayOptions {
   readonly stream?: {
     open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void>
   }
+  /** 审批决策（方案 B：App 端批准/拒绝，复用 approval/request waterfall）。 */
+  readonly approval?: {
+    decide(approvalId: string, outcome: 'allowed-once' | 'rejected' | 'cancelled'): Promise<void>
+  }
 }
 
 const MAX_BODY_BYTES = 64 * 1024
@@ -290,6 +294,20 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         await choices.cancel(choiceId)
         return json({ ok: true })
       }),
+      route('POST', '/approval', async request => {
+        // POST /approval/:id/decide — App 决定审批结果（方案 B）
+        const tail = request.pathname.slice('/approval/'.length)
+        const slash = tail.indexOf('/')
+        if (slash < 0 || tail.slice(slash + 1) !== 'decide') return badRequest()
+        const approvalId = id(tail.slice(0, slash))
+        const body = readObject(request)
+        const approval = options.approval ?? unavailable('approval')
+        if (body.outcome !== 'allowed-once' && body.outcome !== 'rejected' && body.outcome !== 'cancelled') {
+          return badRequest()
+        }
+        await approval.decide(approvalId, body.outcome)
+        return json({ ok: true })
+      }, 'prefix'),
       route('POST', '/tag/ensure', request => {
         const body = readObject(request)
         if (typeof body.text !== 'string') return badRequest()

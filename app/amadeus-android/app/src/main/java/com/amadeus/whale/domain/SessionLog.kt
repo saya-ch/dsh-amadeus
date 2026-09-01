@@ -28,6 +28,7 @@ class SessionLog {
       is StreamEvent.DialogueEvent -> LogEntry.DialogueEntry(event.dialogue)
       is StreamEvent.ActivityEvent -> LogEntry.ActivityEntry(event.activity)
       is StreamEvent.ChoiceEvent -> LogEntry.ChoiceEntry(event.choice)
+      is StreamEvent.ApprovalEvent -> return // 审批不是日志条目
       is StreamEvent.Ended -> return // 结束不是日志条目
     }
     _entries.value = _entries.value + entry
@@ -81,6 +82,9 @@ class SessionStateMachine(private val log: SessionLog) {
         typing = false,
         choice = event.choice,
       )
+      is StreamEvent.ApprovalEvent -> {
+        // 审批不改演出状态（UI 覆盖层处理）
+      }
       is StreamEvent.Ended -> _state.value = _state.value.copy(
         phase = SessionPhase.IDLE,
         typing = false,

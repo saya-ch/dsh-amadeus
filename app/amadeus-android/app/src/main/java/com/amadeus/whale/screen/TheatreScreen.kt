@@ -120,6 +120,7 @@ fun TheatreScreen(
       onDisconnect = onDisconnect,
       onReconnect = onReconnect,
       onResolveChoice = { choice, label -> viewModel.resolveChoice(choice, label) },
+      onDecideApproval = { approval, allowed -> viewModel.decideApproval(approval, allowed) },
     )
   }
 }

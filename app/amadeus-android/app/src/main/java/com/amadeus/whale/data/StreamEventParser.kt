@@ -6,6 +6,7 @@ import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.domain.model.AmadeusTag
 import com.amadeus.whale.domain.model.AmadeusVoice
 import com.amadeus.whale.domain.model.AmadeusWindow
+import com.amadeus.whale.domain.model.ApprovalRequest
 import com.amadeus.whale.domain.model.Choice
 import com.amadeus.whale.domain.model.ChoiceOption
 import com.amadeus.whale.domain.model.Dialogue
@@ -45,6 +46,12 @@ object StreamEventParser {
           )
         } ?: emptyList()
         StreamEvent.ChoiceEvent(Choice(choiceId, question, options))
+      }
+      "approval" -> {
+        val approvalId = (obj["approvalId"] as? JsonPrimitive)?.content ?: return null
+        val toolName = (obj["toolName"] as? JsonPrimitive)?.content ?: ""
+        val reason = (obj["reason"] as? JsonPrimitive)?.contentOrNull
+        StreamEvent.ApprovalEvent(ApprovalRequest(approvalId, toolName, reason))
       }
       "ended" -> StreamEvent.Ended((obj["reason"] as? JsonPrimitive)?.content ?: "")
       else -> null

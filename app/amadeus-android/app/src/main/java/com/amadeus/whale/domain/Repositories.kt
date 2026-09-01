@@ -47,3 +47,8 @@ interface ChoiceRepository {
   suspend fun resolve(choiceId: String, selected: String)
   suspend fun cancel(choiceId: String)
 }
+
+/** 审批 Repository（方案 B：App 端批准/拒绝）。 */
+interface ApprovalRepository {
+  suspend fun decide(approvalId: String, allowed: Boolean)
+}

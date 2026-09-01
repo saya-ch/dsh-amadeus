@@ -92,3 +92,21 @@ class HttpChoiceRepository(
     }
   }
 }
+
+/** 审批 Repository 的 OkHttp 实现（方案 B：POST /approval/:id/decide）。 */
+class HttpApprovalRepository(
+  private val baseUrl: String,
+  private val client: OkHttpClient,
+) : com.amadeus.whale.domain.ApprovalRepository {
+  private val routes = "${baseUrl.trimEnd('/')}/amadeus/extensions/amadeus/routes"
+
+  override suspend fun decide(approvalId: String, allowed: Boolean) = withContext(Dispatchers.IO) {
+    val body = """{"outcome":${if (allowed) "\"allowed-once\"" else "\"rejected\""}}"""
+    client.newCall(Request.Builder().url("$routes/approval/$approvalId/decide")
+      .post(body.toRequestBody(JSON)).build()).execute().use { }
+  }
+
+  private companion object {
+    val JSON = "application/json; charset=utf-8".toMediaType()
+  }
+}

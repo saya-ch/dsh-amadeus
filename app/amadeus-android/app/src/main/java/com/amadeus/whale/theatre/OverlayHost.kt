@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -48,6 +49,7 @@ fun BoxScope.OverlayHost(
   onDisconnect: () -> Unit,
   onReconnect: () -> Unit,
   onResolveChoice: (Choice, String) -> Unit,
+  onDecideApproval: (com.amadeus.whale.domain.model.ApprovalRequest, Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   when (overlay) {
@@ -103,6 +105,14 @@ fun BoxScope.OverlayHost(
         Box(Modifier.fillMaxSize().background(com.amadeus.whale.theme.LocalAmadeusColors.current.overlayScrim).clickable(onClick = onClose))
         Box(Modifier.align(Alignment.BottomCenter)) {
           ChoiceSheet(overlay.choice, onResolveChoice, onClose)
+        }
+      }
+    }
+    is OverlayState.ApprovalPrompt -> {
+      AmadeusOverlay(visible = true, from = Alignment.BottomCenter, modifier = modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(com.amadeus.whale.theme.LocalAmadeusColors.current.overlayScrim).clickable(onClick = onClose))
+        Box(Modifier.align(Alignment.Center)) {
+          ApprovalCard(overlay.approval, onDecideApproval, onClose)
         }
       }
     }
@@ -262,5 +272,56 @@ private fun ChoiceSheet(choice: Choice, onResolve: (Choice, String) -> Unit, onC
     }
     Spacer(Modifier.height(4.dp))
     Text("✕ 暂不选择", color = colors.secondaryText, fontSize = 13.sp, modifier = Modifier.align(Alignment.CenterHorizontally).clickable(onClick = onClose))
+  }
+}
+
+/** 审批卡片（方案 B：App 端批准/拒绝，产品 1.12 手机遥控）。 */
+@Composable
+private fun ApprovalCard(
+  approval: com.amadeus.whale.domain.model.ApprovalRequest,
+  onDecide: (com.amadeus.whale.domain.model.ApprovalRequest, Boolean) -> Unit,
+  onClose: () -> Unit,
+) {
+  val colors = LocalAmadeusColors.current
+  Card(
+    modifier = Modifier.fillMaxWidth(0.86f),
+    colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
+    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+  ) {
+    Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+      Text("需要批准", color = colors.accent, fontSize = 12.sp)
+      Spacer(Modifier.height(4.dp))
+      Text(
+        text = "鲸鱼娘想调用 ${approval.toolName}",
+        color = colors.primaryText,
+        fontSize = 16.sp,
+      )
+      if (!approval.reason.isNullOrBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+          text = approval.reason,
+          color = colors.secondaryText,
+          fontSize = 13.sp,
+        )
+      }
+      Spacer(Modifier.height(20.dp))
+      Row {
+        Button(
+          onClick = { onDecide(approval, true) },
+          modifier = Modifier.weight(1f).padding(end = 6.dp),
+        ) { Text("批准") }
+        OutlinedButton(
+          onClick = { onDecide(approval, false) },
+          modifier = Modifier.weight(1f).padding(start = 6.dp),
+        ) { Text("拒绝") }
+      }
+      Spacer(Modifier.height(6.dp))
+      Text(
+        text = "✕ 稍后再说",
+        color = colors.secondaryText,
+        fontSize = 13.sp,
+        modifier = Modifier.align(Alignment.CenterHorizontally).clickable(onClick = onClose),
+      )
+    }
   }
 }

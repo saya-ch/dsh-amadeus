@@ -9,6 +9,7 @@ import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSession
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import { AmadeusSessionCommands, AmadeusSessionsAdapter, type AmadeusSessionsContext } from './amadeus-sessions.js'
 import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js'
+import { AmadeusApprovalAdapter, type AmadeusApprovalContext } from './amadeus-approval.js'
 import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-choices.js'
 import { AmadeusStreamHub } from './amadeus-stream.js'
 import { registerAmadeusTools } from './amadeus-tools.js'
@@ -141,28 +142,33 @@ export async function createAmadeusOpeningSession(
  */
 export function bridgeAmadeusChoicesToStream(
   choices: { registerStream(sessionId: string, push: (frame: object) => void): () => void },
+  approval: { registerStream(sessionId: string, push: (frame: object) => void): () => void },
   stream: { open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void> },
 ): (sessionId: string, write: (data: string) => void, onFinished?: () => void) => Promise<() => void> {
   return async (sessionId, write, onFinished) => {
     let closed = false
-    const unregister = choices.registerStream(sessionId, frame => write(JSON.stringify(frame)))
+    const unregisterChoice = choices.registerStream(sessionId, frame => write(JSON.stringify(frame)))
+    const unregisterApproval = approval.registerStream(sessionId, frame => write(JSON.stringify(frame)))
     let close: (() => void) | undefined
     try {
       close = await stream.open(sessionId, write, () => {
         if (closed) return
         closed = true
-        unregister()
+        unregisterChoice()
+        unregisterApproval()
         onFinished?.()
       })
     } catch (error) {
       closed = true
-      unregister()
+      unregisterChoice()
+      unregisterApproval()
       throw error
     }
     return () => {
       if (closed) return
       closed = true
-      unregister()
+      unregisterChoice()
+      unregisterApproval()
       close?.()
     }
   }
@@ -298,10 +304,12 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   const reportsAdapter = new AmadeusReportsAdapter(ctx, stateDir)
   const previewStore = new AmadeusPreviewStore(stateDir)
   const choicesAdapter = new AmadeusChoicesAdapter(ctx as unknown as AmadeusChoicesContext, stateDir)
+  const approvalAdapter = new AmadeusApprovalAdapter(ctx as unknown as AmadeusApprovalContext)
   const streamHub = new AmadeusStreamHub(sessionsContext)
 
   registerAmadeusTools(ctx, reportsAdapter, previewStore)
   choicesAdapter.install()
+  approvalAdapter.install()
 
   const business: AmadeusGatewayOptions = {
     sessions: {
@@ -323,7 +331,8 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
       },
     },
     previews: previewStore,
-    stream: { open: bridgeAmadeusChoicesToStream(choicesAdapter, streamHub) },
+    approval: approvalAdapter,
+    stream: { open: bridgeAmadeusChoicesToStream(choicesAdapter, approvalAdapter, streamHub) },
   }
 
   const holder: { gateway?: MobileAccessGateway | undefined } = {}

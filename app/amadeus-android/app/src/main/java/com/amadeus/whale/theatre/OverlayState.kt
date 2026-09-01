@@ -1,6 +1,7 @@
 package com.amadeus.whale.theatre
 
 import com.amadeus.whale.domain.model.Activity
+import com.amadeus.whale.domain.model.ApprovalRequest
 import com.amadeus.whale.domain.model.Choice
 
 /** 覆盖层状态（架构 3.12：单层不叠加）。 */
@@ -22,4 +23,7 @@ sealed class OverlayState {
 
   /** 选项（产品 1.11：ask_user_question）。 */
   data class ChoicePrompt(val choice: Choice) : OverlayState()
+
+  /** 审批（方案 B：workspace-write，App 端批准/拒绝）。 */
+  data class ApprovalPrompt(val approval: ApprovalRequest) : OverlayState()
 }

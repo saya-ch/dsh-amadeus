@@ -44,11 +44,19 @@ data class Choice(
   val options: List<ChoiceOption>,
 )
 
+/** 审批请求（方案 B：workspace-write + App 端批准/拒绝）。 */
+data class ApprovalRequest(
+  val approvalId: String,
+  val toolName: String,
+  val reason: String? = null,
+)
+
 /** SSE 事件（架构 3.19 契约）。 */
 sealed class StreamEvent {
   data class DialogueEvent(val dialogue: Dialogue) : StreamEvent()
   data class ActivityEvent(val activity: Activity) : StreamEvent()
   data class ChoiceEvent(val choice: Choice) : StreamEvent()
+  data class ApprovalEvent(val approval: ApprovalRequest) : StreamEvent()
   data class Ended(val reason: String) : StreamEvent()
 }
 
