@@ -96,7 +96,7 @@ describe('session commands', () => {
     ctx.sessionController.page = async () => ({
       records: [
         { type: 'other', event: undefined },
-        { type: 'event', event: { type: 'user/message', data: { text: '你好' } } },
+        { type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } },
       ],
       hasMore: false,
     })

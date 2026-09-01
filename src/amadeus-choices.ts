@@ -183,13 +183,15 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
     this.ctx.logger?.warn(`no stream registered for session ${sessionId ?? 'unknown'}; choice ${choiceId} remains pending`)
   }
 
-  /** Derive the owning session id from the request agent, if present. */
+  /** Derive the owning session id from the request agent (DSH Agent carries id). */
   private static sessionIdOf(agent: unknown): string | undefined {
     if (typeof agent === 'string') return agent
     if (agent === null || typeof agent !== 'object') return undefined
-    const record = agent as { session?: { id?: unknown }; id?: unknown }
-    if (typeof record.session?.id === 'string') return record.session.id
+    // DSH `Agent` is `{ readonly id: SessionId }` — the id IS the session id.
+    const record = agent as { id?: unknown; session?: { id?: unknown } }
     if (typeof record.id === 'string') return record.id
+    // Tolerate a legacy `{ session: { id } }` shape if DSH ever re-wraps it.
+    if (typeof record.session?.id === 'string') return record.session.id
     return undefined
   }
 

@@ -44,7 +44,7 @@ function controllableFollow(initial: any[] = []) {
 describe('stream hub', () => {
   it('emits segment frames from follow events', async () => {
     const frames = [
-      { type: 'event', event: { type: 'assistant/message', data: { message: { text: '好呀\n[[AMW:{"mood":"happy","sprite":"wag"}]]' } } } },
+      { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '好呀\n[[AMW:{"mood":"happy","sprite":"wag"}]]' }] } } } },
     ]
     const hub = new AmadeusStreamHub(framesFor(...frames))
     const written: string[] = []
@@ -59,7 +59,7 @@ describe('stream hub', () => {
 
   it('emits a choice frame for a choice-window segment', async () => {
     const text = '请选择\n[[AMW:{"mood":"happy","sprite":"talk","voice":"soft","sfx":"bell","bgm":"none","window":"choice","windowTitle":"选择路径","choiceId":"cq_1","options":["A","B"]}]]'
-    const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { text } } } }))
+    const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))
     await flush()
@@ -84,7 +84,7 @@ describe('stream hub', () => {
 
   it('splits multi-sentence replies into separate segment frames', async () => {
     const text = '第一句\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]\n第二句\n[[AMW:{"mood":"think","sprite":"think","voice":"soft","sfx":"none","bgm":"none"}]]'
-    const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { text } } } }))
+    const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))
     await flush()
@@ -108,7 +108,7 @@ describe('stream hub', () => {
     expect(follow.returned).toBe(true)
     await flush()
     expect(written).toEqual([])
-    follow.push({ type: 'event', event: { type: 'assistant/message', data: { message: { text: '好呀' } } } })
+    follow.push({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '好呀' }] } } } })
     await flush()
     expect(written).toEqual([])
   })
@@ -117,9 +117,9 @@ describe('stream hub', () => {
     const snapshot = {
       type: 'snapshot',
       records: [
-        { type: 'event', event: { type: 'user/message', data: { text: '你好' } } },
-        { type: 'event', event: { type: 'assistant/message', data: { message: { text: '早呀\n[[AMW:{"mood":"happy","sprite":"wag","voice":"soft","sfx":"none","bgm":"none"}]]' } } } },
-        { type: 'event', event: { type: 'assistant/message', data: { message: { text: '最新\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]' } } } },
+        { type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } },
+        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '早呀\n[[AMW:{"mood":"happy","sprite":"wag","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
+        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '最新\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
       ],
     }
     const hub = new AmadeusStreamHub(framesFor(snapshot))
@@ -131,7 +131,7 @@ describe('stream hub', () => {
   })
 
   it('ignores a snapshot with no assistant records', async () => {
-    const snapshot = { type: 'snapshot', records: [{ type: 'event', event: { type: 'user/message', data: { text: '你好' } } }] }
+    const snapshot = { type: 'snapshot', records: [{ type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } }] }
     const hub = new AmadeusStreamHub(framesFor(snapshot))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))

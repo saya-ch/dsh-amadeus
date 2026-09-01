@@ -1,4 +1,5 @@
 import { parseAmadeusSegments, type AmadeusSegment } from './amadeus-tags.js'
+import { assistantMessageText } from './amadeus-text.js'
 
 /** One event carried by a DSH session follow frame or snapshot record. */
 export interface AmadeusSessionFollowEvent {
@@ -22,7 +23,7 @@ export interface AmadeusSessionFollowFrame {
 /** Structural surface of the DSH session follow stream the hub consumes. */
 export interface AmadeusStreamContext {
   readonly sessionController: {
-    follow(req: { address: { kind: 'session'; sessionId: string } }): AsyncIterable<AmadeusSessionFollowFrame>
+    follow(req: { address: { kind: 'session'; sessionId: string } }, signal?: AbortSignal): AsyncIterable<AmadeusSessionFollowFrame>
   }
 }
 
@@ -54,7 +55,8 @@ export class AmadeusStreamHub {
   async open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void> {
     let closed = false
     let finished = false
-    const frames = this.ctx.sessionController.follow({ address: { kind: 'session', sessionId } })
+    const abort = new AbortController()
+    const frames = this.ctx.sessionController.follow({ address: { kind: 'session', sessionId } }, abort.signal)
     let iterator: AsyncIterator<AmadeusSessionFollowFrame> | undefined = frames[Symbol.asyncIterator]()
     const finish = (reason: string): void => {
       if (finished || closed) return
@@ -90,6 +92,7 @@ export class AmadeusStreamHub {
     return () => {
       if (closed) return
       closed = true
+      abort.abort()
       const iter = iterator
       iterator = undefined
       void iter?.return?.()
@@ -97,8 +100,8 @@ export class AmadeusStreamHub {
   }
 
   private emitText(event: AmadeusSessionFollowEvent, write: (data: string) => void): void {
-    const text = (event.data as { message?: { text?: string } } | undefined)?.message?.text
-    if (typeof text === 'string' && text.length > 0) this.emit(text, write)
+    const text = assistantMessageText(event.data)
+    if (text.length > 0) this.emit(text, write)
   }
 
   private emit(text: string, write: (data: string) => void): void {

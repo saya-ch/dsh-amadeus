@@ -125,7 +125,7 @@ function route(
       request.signal.throwIfAborted()
       return error instanceof AmadeusRequestError
         ? json({ error: error.code }, error.status)
-        : json({ error: 'amadeus_internal_error' }, 500)
+        : (console.error('[amadeus-extension]', error), json({ error: 'amadeus_internal_error' }, 500))
     }
   } }
 }

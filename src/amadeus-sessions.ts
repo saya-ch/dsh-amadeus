@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
+import { assistantMessageText, toolResultLabel, userMessageText } from './amadeus-text.js'
 import type { AmadeusGatewayOptions, AmadeusSessionSummary } from './amadeus-extension.js'
 import type { AmadeusSessionFollowFrame } from './amadeus-stream.js'
 
@@ -15,9 +16,9 @@ export interface AmadeusSessionsContext {
     create(req: { workspaceId?: string; agentPreset?: string }): Promise<{ sessionId: string }>
     rename(req: { sessionId: string; title: string }): Promise<{ title: string }>
     cancel(req: { sessionId: string }): Promise<{ accepted: boolean }>
-    prompt(req: { requestId: string; sessionId: string; mode: 'queue' | 'steer'; content: Array<{ type: 'text'; text: string }> }): Promise<{ accepted: boolean }>
-    page(req: { address: { kind: 'session'; sessionId: string }; throughSeq: number; beforeSeq?: number; maxMessages?: number }): Promise<{ records: Array<{ type: 'event'; event: { type: string; data: unknown } }>; hasMore: boolean }>
-    follow(req: { address: { kind: 'session'; sessionId: string } }): AsyncIterable<AmadeusSessionFollowFrame>
+    prompt(req: { requestId: string; sessionId: string; mode: 'queue' | 'steer'; content: Array<{ type: 'text'; text: string }> }, signal?: AbortSignal): Promise<{ accepted: boolean }>
+    page(req: { address: { kind: 'session'; sessionId: string }; throughSeq: number; beforeSeq?: number; maxMessages?: number }, signal?: AbortSignal): Promise<{ records: Array<{ type: 'event'; event: { type: string; data: unknown } }>; hasMore: boolean }>
+    follow(req: { address: { kind: 'session'; sessionId: string } }, signal?: AbortSignal): AsyncIterable<AmadeusSessionFollowFrame>
   }
   readonly workspaceRegistry: {
     archiveSession(sessionId: string): Promise<void>
@@ -88,7 +89,7 @@ export class AmadeusSessionCommands {
 
   async prompt(id: string, text: string): Promise<void> {
     await this.requireOwned(id)
-    await this.ctx.sessionController.prompt({ requestId: `amw-${randomUUID()}`, sessionId: id, mode: 'queue', content: [{ type: 'text', text }] })
+    await this.ctx.sessionController.prompt({ requestId: `amw-${randomUUID()}`, sessionId: id, mode: 'queue', content: [{ type: 'text', text }] }, new AbortController().signal)
   }
 
   async cancel(id: string): Promise<void> {
@@ -103,14 +104,14 @@ export class AmadeusSessionCommands {
       throughSeq: Number.MAX_SAFE_INTEGER,
       ...(beforeSeq === undefined ? {} : { beforeSeq }),
       maxMessages: 50,
-    })
+    }, new AbortController().signal)
     const messages = res.records.flatMap((rec): Array<{ role: 'user' | 'assistant' | 'tool'; text: string }> => {
       if (rec.type !== 'event') return []
       const event = rec.event
-      const data = event.data as { text?: string; message?: { text?: string }; name?: string }
-      if (event.type === 'user/message') return [{ role: 'user', text: data.text ?? '' }]
-      if (event.type === 'assistant/message') return [{ role: 'assistant', text: data.message?.text ?? '' }]
-      if (event.type === 'tool/result') return [{ role: 'tool', text: `[工具] ${data.name ?? ''}` }]
+      const data = event.data
+      if (event.type === 'user/message') return [{ role: 'user', text: userMessageText(data) }]
+      if (event.type === 'assistant/message') return [{ role: 'assistant', text: assistantMessageText(data) }]
+      if (event.type === 'tool/result') return [{ role: 'tool', text: `[工具] ${toolResultLabel(data)}` }]
       return []
     })
     return { messages, hasMore: res.hasMore }

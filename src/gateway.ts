@@ -139,7 +139,7 @@ const PAIR_PAGE = `<!doctype html>
     <output id="pair-status"></output>
   </form>
 </main>
-<script src="/mobile-access/pair.js" defer></script>
+<script src="/amadeus/pair.js" defer></script>
 </html>
 `
 
@@ -339,10 +339,10 @@ const LOGIN_PAGE = `<!doctype html>
   <p id="login-progress">Restoring the secure Session…</p>
   <section id="login-failed" hidden>
     <p>This device is no longer paired. Open pairing on the computer, then pair it again.</p>
-    <a href="/mobile-access/pair">Open pairing</a>
+    <a href="/amadeus/pair">Open pairing</a>
   </section>
 </main>
-<script src="/mobile-access/login.js" defer></script>
+<script src="/amadeus/login.js" defer></script>
 </html>
 `
 
@@ -1119,7 +1119,19 @@ export class MobileAccessGateway {
     const target = parseRequestTarget(request.url)
     const policy = this.requirePolicy()
     const isMutation = request.method !== 'GET' && request.method !== 'HEAD'
-    assertExternalTrust(request, policy, isMutation)
+    // Native Android requests (pairing, extension-routes mutations) carry no
+    // browser Origin. Mutations stay safe through the session cookie + CSRF
+    // token enforced later (CSRF cannot be read cross-site). Only a request
+    // with NEITHER Origin nor Sec-Fetch-Site (pure native, no browser
+    // metadata) is exempt from the Origin requirement; a browser-ish request
+    // that omits Origin but sends Sec-Fetch-Site still fails the requireOrigin
+    // branch below because its site is never 'same-origin'.
+    const nativeAuth = target.decodedPathname === `${AUTH_PREFIX}/auth/native-pair`
+      || target.decodedPathname === `${AUTH_PREFIX}/auth/native-renew`
+    const bareNative = request.headers.origin === undefined
+      && request.headers['sec-fetch-site'] === undefined
+      && (nativeAuth || isMutation)
+    assertExternalTrust(request, policy, isMutation && !bareNative)
     if (target.decodedPathname === LOCAL_ADMIN_PREFIX || target.decodedPathname.startsWith(`${LOCAL_ADMIN_PREFIX}/`)) {
       throw new HttpError(404, 'not_found')
     }
@@ -2162,7 +2174,7 @@ export class MobileAccessGateway {
             const body = await readJsonObject(request, MAX_CONTROL_BODY_BYTES)
             if (body.ttlMs !== undefined && typeof body.ttlMs !== 'number') throw new HttpError(400, 'bad_request')
             const opened = await this.access.openPairing(body.ttlMs as number | undefined)
-            const pairUrl = `${this.address().origin}/mobile-access/pair#instance=${this.config.instanceId}&token=${opened.token}`
+            const pairUrl = `${this.address().origin}/amadeus/pair#instance=${this.config.instanceId}&token=${opened.token}`
             const appPairUrl = pairUrl
             // The QR code is an enhancement; a failed render must not waste an opened window.
             let qrSvg = ''

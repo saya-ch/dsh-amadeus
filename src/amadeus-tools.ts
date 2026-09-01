@@ -1,10 +1,33 @@
 import { randomBytes } from 'node:crypto'
 import type { AmadeusReportsAdapter, AmadeusPreviewStore } from './amadeus-reports.js'
 
+/** Structural surface of the DSH `ctx.tools` registry (core/tools). */
+export interface AmadeusToolsRegistry {
+  readonly tools: {
+    register(tool: {
+      name: string
+      description: string
+      parameters: Record<string, unknown>
+      output: {
+        schema: Record<string, unknown>
+        render(args: unknown, value: unknown): Array<{ type: 'text'; text: string }>
+      }
+      execute(args: unknown, exec?: { signal?: AbortSignal }): Promise<unknown>
+    }): void
+  }
+}
+
+function registryOf(ctx: unknown): AmadeusToolsRegistry {
+  // DSH publishes `tools` on the agent-scoped Context at runtime; the Cordis
+  // Context type does not carry it, so the structural surface is asserted here.
+  return ctx as AmadeusToolsRegistry
+}
+
 const PREVIEW_TYPES = new Set<string>(['web', 'image', 'code', 'table'])
 
-export function registerAmadeusTools(ctx: any, reports: AmadeusReportsAdapter, previews: AmadeusPreviewStore): void {
-  ctx.tools.register({
+export function registerAmadeusTools(ctx: unknown, reports: AmadeusReportsAdapter, previews: AmadeusPreviewStore): void {
+  const registry = registryOf(ctx)
+  registry.tools.register({
     name: 'save_report',
     description: '把一份长 Markdown/文件列表存为报告窗口，返回 windowId 供 [[AMW:]] 标签引用',
     parameters: {
@@ -32,7 +55,7 @@ export function registerAmadeusTools(ctx: any, reports: AmadeusReportsAdapter, p
       return { windowId: id, title: args.title }
     },
   })
-  ctx.tools.register({
+  registry.tools.register({
     name: 'show_preview',
     description: '把一个结果（网页 URL/图片/表格/代码 diff）存为预览窗口，返回 windowId',
     parameters: {
