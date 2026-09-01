@@ -1,15 +1,21 @@
 package com.amadeus.whale.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,43 +23,88 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.amadeus.whale.domain.model.AmadeusMood
+import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.theatre.DialogueBox
+import com.amadeus.whale.theatre.TheatreStage
+import com.amadeus.whale.theatre.TheatreViewModel
 import com.amadeus.whale.theme.LocalAmadeusColors
 
 /**
- * 剧场（产品 1.8/架构 3.11）：背景 + 立绘 + 对话框 + 输入唤出 + 覆盖层。
- * 骨架阶段：基本结构（背景占位 + 对话框 + 切换读档/断开），后续填充 Stage/InputBar/OverlayHost。
+ * 剧场（产品 1.8/架构 3.11）：Stage + DialogueBox + 输入角落唤出（占一行）+ 顶部操作。
+ * 状态提升：全部状态从 TheatreViewModel 来，组件纯展示。
  */
 @Composable
 fun TheatreScreen(
-  sessionId: String,
-  onOpenSaveSlot: () -> Unit,
-  onDisconnect: () -> Unit,
+  viewModel: TheatreViewModel,
+  onOpenSaveSlot: () -> Unit = {},
+  onOpenSettings: () -> Unit = {},
+  onOpenHistory: () -> Unit = {},
+  onOpenEventSheet: () -> Unit = {},
+  onDisconnect: () -> Unit = {},
+  demoMode: Boolean = false,
+  onDemoFinished: () -> Unit = {},
 ) {
+  val state by viewModel.uiState.collectAsState()
   val colors = LocalAmadeusColors.current
-  var dialog by remember { mutableStateOf("鲸鱼娘在这里等你的任务…（骨架占位）") }
-  var typing by remember { mutableStateOf(false) }
+  var inputOpen by remember { mutableStateOf(false) }
+  var inputText by remember { mutableStateOf("") }
 
-  Box(modifier = Modifier.fillMaxSize().background(colors.screenBackground)) {
-    // TODO: TheatreStage（背景 + 立绘，架构 3.11）
+  Box(modifier = Modifier.fillMaxSize()) {
+    // 舞台：背景 + 立绘
+    TheatreStage(
+      background = state.background,
+      mood = state.dialogue?.tag?.mood ?: AmadeusMood.idle,
+      sprite = state.dialogue?.tag?.sprite ?: AmadeusSprite.smile,
+    )
+    // 底部：输入唤出（占一行）+ 对话框
     Column(
-      modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize().padding(16.dp),
+      modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp),
     ) {
-      Spacer(Modifier.weight(1f))
+      // 输入栏（平时隐藏，角落按键唤出，仅占一行，架构 3.8/产品 1.8）
+      if (inputOpen) {
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+          OutlinedTextField(
+            value = inputText,
+            onValueChange = { inputText = it },
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("和鲸鱼娘说点什么…") },
+            singleLine = true,
+          )
+          Spacer(Modifier.width(8.dp))
+          IconButton(
+            onClick = {
+              if (inputText.isNotBlank()) {
+                viewModel.send(inputText)
+                inputText = ""
+                inputOpen = false
+              }
+            },
+          ) { Text("发送") }
+        }
+      }
       DialogueBox(
-        speaker = "鲸鱼娘",
-        text = dialog,
-        typing = typing,
-        onClick = { /* TODO: 打断打字/立即打满 */ },
+        speaker = state.speaker,
+        text = state.dialogue?.text ?: "（等待鲸鱼娘说话…）",
+        typing = state.typing,
+        onClick = {
+          viewModel.onTap()
+          if (demoMode && !state.typing) inputOpen = false
+        },
       )
     }
-    // 顶部：切换读档 + 断开（骨架占位，后续收进设置/顶部栏）
+    // 顶部：历史/事件流 + 读档/设置
     Box(modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-      TextButton(onClick = onOpenSaveSlot) { Text("读档", color = colors.primaryText) }
+      Row {
+        TextButton(onClick = onOpenHistory) { Text("记录", color = colors.primaryText) }
+        TextButton(onClick = onOpenEventSheet) { Text("幕后", color = colors.secondaryText) }
+      }
     }
     Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-      TextButton(onClick = onDisconnect) { Text("断开", color = colors.danger) }
+      Row {
+        if (!demoMode) TextButton(onClick = onOpenSaveSlot) { Text("读档", color = colors.primaryText) }
+        TextButton(onClick = onOpenSettings) { Text("设置", color = colors.primaryText) }
+      }
     }
   }
 }
