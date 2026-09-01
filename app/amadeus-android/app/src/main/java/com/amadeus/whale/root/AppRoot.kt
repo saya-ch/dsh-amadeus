@@ -9,7 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.amadeus.whale.data.HttpAuthService
+import com.amadeus.whale.data.HttpSessionRepository
 import com.amadeus.whale.data.store.DevicePrefs
 import com.amadeus.whale.data.store.DevicePrefsStore
 import com.amadeus.whale.domain.AppLaunchDecider
@@ -32,11 +33,14 @@ import kotlinx.coroutines.launch
 fun AppRoot(
   prefsStore: DevicePrefsStore,
   launchDecider: AppLaunchDecider,
-  sessionRepository: SessionRepository,
+  authService: HttpAuthService,
 ) {
   val prefs by prefsStore.flow.collectAsState(initial = DevicePrefs())
   var screen by remember { mutableStateOf<Screen>(Screen.Title) }
   val scope = rememberCoroutineScope()
+
+  // 真实会话 repository：从配对成功的 session client 构造（baseUrl = 网关 origin）
+  var repository by remember { mutableStateOf<SessionRepository?>(null) }
 
   // 启动决策：标题画面展示期间读状态，决策完切到目标 Screen
   LaunchedEffect(Unit) {
@@ -69,24 +73,34 @@ fun AppRoot(
       }
       is Screen.Connection -> ConnectionScreen(
         firstPairing = s.firstPairing,
+        authService = authService,
         onPaired = { sessionId ->
+          // 配对成功 → 从 auth 构造真实 repository → 进剧场/读档
           if (s.firstPairing) scope.launch { prefsStore.setDemoSeen(true) }
+          repository = authService.currentSession()?.let {
+            HttpSessionRepository(it.origin.serialized, it.client)
+          }
           screen = if (sessionId != null) Screen.Theatre(sessionId) else Screen.SaveSlot
         },
         onBackToDemo = { screen = Screen.Demo },
       )
       Screen.SaveSlot -> SaveSlotScreen(
-        repository = sessionRepository,
+        repository = repository ?: return@AmadeusTheme,
         onOpenSession = { sessionId -> screen = Screen.Theatre(sessionId) },
         onBack = { screen = Screen.Connection(firstPairing = false) },
       )
       is Screen.Theatre -> RealTheatreHost(
         sessionId = s.sessionId,
-        repository = sessionRepository,
+        repository = repository ?: return@AmadeusTheme,
         prefsStore = prefsStore,
+        authService = authService,
         onOpenSaveSlot = { screen = Screen.SaveSlot },
         onDisconnect = {
-          scope.launch { prefsStore.setGatewayUrl(null) }
+          scope.launch {
+            authService.currentSession()?.let { authService.disconnect(it.origin.serialized) }
+            prefsStore.setGatewayUrl(null)
+          }
+          repository = null
           screen = Screen.Connection(firstPairing = false)
         },
       )
@@ -100,6 +114,7 @@ private fun RealTheatreHost(
   sessionId: String,
   repository: SessionRepository,
   prefsStore: DevicePrefsStore,
+  authService: HttpAuthService,
   onOpenSaveSlot: () -> Unit,
   onDisconnect: () -> Unit,
 ) {
