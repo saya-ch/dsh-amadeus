@@ -1,8 +1,12 @@
 package com.amadeus.whale.data
 
 import com.amadeus.whale.domain.SessionRepository
+import com.amadeus.whale.domain.model.AmadeusMood
 import com.amadeus.whale.domain.model.AmadeusSession
+import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.domain.model.AmadeusTag
+import com.amadeus.whale.domain.model.AmadeusVoice
+import com.amadeus.whale.domain.model.AmadeusWindow
 import com.amadeus.whale.domain.model.Dialogue
 import com.amadeus.whale.domain.model.SessionPage
 import com.amadeus.whale.domain.model.StreamEvent
@@ -142,7 +146,12 @@ class HttpSessionRepository(
       "assistant/message" -> {
         val text = extractAssistantText(ev["data"])
         if (text.isNullOrBlank()) null
-        else StreamEvent.DialogueEvent(Dialogue(text, AmadeusTag()))
+        else {
+          // 剥离段尾 [[AMW:...]] 标签（page 是原始事件，含标签；SSE 流已剥离）
+          val clean = stripAmwTag(text)
+          val tag = parseAmwTag(ev["data"])
+          StreamEvent.DialogueEvent(Dialogue(clean, tag))
+        }
       }
       else -> null // tool/think 等历史事件暂不完整映射（可后续扩展）
     }
@@ -150,13 +159,38 @@ class HttpSessionRepository(
 
   private fun extractAssistantText(data: Any?): String? {
     val obj = data as? JsonObject ?: return null
-    val content = obj["content"] as? JsonArray ?: return null
+    // DSH 事件 data 结构：assistant/message 是 { message: { content: [...] } }
+    val message = obj["message"] as? JsonObject
+    val content = (message ?: obj)["content"] as? JsonArray ?: return null
     return content.mapNotNull { c ->
       val co = c as? JsonObject ?: return@mapNotNull null
       if ((co["type"] as? JsonPrimitive)?.contentOrNull == "text") {
         (co["text"] as? JsonPrimitive)?.contentOrNull
       } else null
     }.joinToString("\n")
+  }
+
+  /** 剥离段尾 [[AMW:{...}]] 标签（与 Host parseAmadeusTag 一致）。 */
+  private fun stripAmwTag(text: String): String {
+    val m = Regex("\\[\\[AMW:\\s*(\\{[\\s\\S]*?\\})\\]\\]\\s*$").find(text)
+    return m?.let { text.substring(0, it.range.first).trimEnd() } ?: text
+  }
+
+  /** 从 assistant/message data 里解析标签（简版：找 content 文本里的 AMW 标签）。 */
+  private fun parseAmwTag(data: Any?): AmadeusTag {
+    val text = extractAssistantText(data) ?: return AmadeusTag()
+    val m = Regex("\\[\\[AMW:\\s*(\\{[\\s\\S]*?\\})\\]\\]").find(text) ?: return AmadeusTag()
+    return runCatching {
+      val obj = json.parseToJsonElement(m.groupValues[1]).jsonObject
+      AmadeusTag(
+        mood = runCatching { AmadeusMood.valueOf((obj["mood"] as? JsonPrimitive)?.content ?: "idle") }.getOrDefault(AmadeusMood.idle),
+        sprite = runCatching { AmadeusSprite.valueOf((obj["sprite"] as? JsonPrimitive)?.content ?: "smile") }.getOrDefault(AmadeusSprite.smile),
+        voice = runCatching { AmadeusVoice.valueOf((obj["voice"] as? JsonPrimitive)?.content ?: "soft") }.getOrDefault(AmadeusVoice.soft),
+        window = runCatching { AmadeusWindow.valueOf((obj["window"] as? JsonPrimitive)?.content ?: "none") }.getOrDefault(AmadeusWindow.none),
+        windowId = (obj["windowId"] as? JsonPrimitive)?.content ?: "",
+        windowTitle = (obj["windowTitle"] as? JsonPrimitive)?.content ?: "",
+      )
+    }.getOrDefault(AmadeusTag())
   }
 
   private companion object {

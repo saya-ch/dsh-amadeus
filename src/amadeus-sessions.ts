@@ -10,7 +10,7 @@ export interface AmadeusSessionsContext {
   readonly sessionQuery: {
     listSessions(signal?: AbortSignal): Promise<Array<{ header: { id: string; agentPreset?: string; cwd?: string; updatedAt?: number } }>>
     readTitle(sessionId: string): Promise<string>
-    readSurface(sessionId: string): Promise<{ events: Array<{ type: string; data: unknown }> }>
+    readSurface(sessionId: string): Promise<{ events: Array<{ type: string; data: unknown }>; capturedThroughSeq?: number | null }>
   }
   readonly sessionController: {
     create(req: { workspaceId?: string; agentPreset?: string }): Promise<{ sessionId: string }>
@@ -59,7 +59,7 @@ export class AmadeusSessionsAdapter implements NonNullable<AmadeusGatewayOptions
 }
 
 export interface AmadeusPageMessages {
-  readonly messages: Array<{ role: 'user' | 'assistant' | 'tool'; text: string }>
+  readonly records: Array<{ type: 'event'; event: { type: string; data: unknown } }>
   readonly hasMore: boolean
 }
 
@@ -99,21 +99,16 @@ export class AmadeusSessionCommands {
 
   async page(id: string, beforeSeq?: number): Promise<AmadeusPageMessages> {
     await this.requireOwned(id)
+    // readSurface 提供最新 seq（capturedThroughSeq）作为 page 的 throughSeq
+    const surface = await this.ctx.sessionQuery.readSurface(id)
+    const throughSeq = surface.capturedThroughSeq ?? -1
     const res = await this.ctx.sessionController.page({
       address: { kind: 'session', sessionId: id },
-      throughSeq: Number.MAX_SAFE_INTEGER,
+      throughSeq,
       ...(beforeSeq === undefined ? {} : { beforeSeq }),
       maxMessages: 50,
     }, new AbortController().signal)
-    const messages = res.records.flatMap((rec): Array<{ role: 'user' | 'assistant' | 'tool'; text: string }> => {
-      if (rec.type !== 'event') return []
-      const event = rec.event
-      const data = event.data
-      if (event.type === 'user/message') return [{ role: 'user', text: userMessageText(data) }]
-      if (event.type === 'assistant/message') return [{ role: 'assistant', text: assistantMessageText(data) }]
-      if (event.type === 'tool/result') return [{ role: 'tool', text: `[工具] ${toolResultLabel(data)}` }]
-      return []
-    })
-    return { messages, hasMore: res.hasMore }
+    // 3.20：返回原始事件（App 重建完整 SessionLog：演出段 + 事件流都有）
+    return { records: res.records, hasMore: res.hasMore }
   }
 }
