@@ -173,6 +173,42 @@
 
 ### 3.18 Host 微调范围（不改架构）
 
-- **协议简化**（配合 3.8）：mode system prompt 改为“一段输出末尾放**一组标签**描述整段”（不再多标签拆分）；`ensureAmadeusTag` 兜底保留（防漏标签）。
-- **长文本铁律**（产品 1.9）：system prompt 加规则“超长内容（>3 句/约 100 字）走 `save_report`/`show_preview`，对话框只留 1~2 句摘要”；Host 加**超长检测拦截**（自动截断归档兜底）。
-- **开场固定脚本**（产品 1.3/1.4）：开场从“create 后 prompt 模型生成”改为“**固定脚本注入 + 2~3 句轮换**”（不靠模型生成，稳定性优先）。
+- **协议简化**（配合 3.8/3.19）：mode system prompt 改为“一段输出末尾放**一组标签**描述整段”（不再多标签拆分）；`ensureAmadeusTag` 兜底保留（防漏标签）。
+- **长文本铁律**（产品 1.9）：system prompt 加规则“超长内容走 `save_report`/`show_preview`，对话框只留 1~2 句摘要”；Host 加**超长检测拦截**（兜底）：
+  - **判定**：`len > 120 字符 或 句数 > 4` → 超长。
+  - **处理**：截断保留前 1~2 句 + “…”进对话框，全文自动存成报告窗口（不调模型生成摘要）。
+- **开场固定脚本**（产品 1.3/1.4）：开场从“create 后 prompt 模型生成”改为“**create 后 prompt 发固定开场词**（固定脚本 2~3 句轮换，模型以鲸鱼娘身份回应）”，改动最小，稳定性优先。
+
+### 3.19 SSE 事件契约（App ↔ Host 接缝）
+
+四类帧（JSON `data:` 行）：
+
+```
+# 演出帧（对话框主角）：一个 assistant/message = 一个展示
+{ "type": "dialogue",
+  "text": "干净文本（无标签）",
+  "tag": { "mood": "happy", "sprite": "wag", ... } }
+
+# 幕后帧（事件流小窗）：思考/工具/step 等
+{ "type": "activity",
+  "kind": "tool" | "think" | "step" | "turn" | ...,
+  "title": "调用工具 foo",
+  "detail": "..." }
+
+# 选项帧（ask_user_question）
+{ "type": "choice",
+  "choiceId": "...", "question": "...", "options": [{label, description}] }
+
+# 结束帧
+{ "type": "ended", "reason": "..." }
+```
+
+- **`dialogue`**：一个 message 一个帧，Host 已剥离标签成 `tag` 对象（配合 3.8 协议简化），App 不再拆标签。
+- **`activity`**：承载思考/工具/step 事件，喂事件流小窗（产品 1.5/1.9）——现有契约缺失，新增。
+- **`choice`/`ended`** 保留。
+
+### 3.20 恢复会话数据流（进程被杀后回来）
+
+- **扩展 page 返回原始事件**：`page` 不再只返回纯文本 messages，而是返回**原始 follow 事件**（assistant/message、tool/call、tool/result、思考类…），App 重建完整 SessionLog（演出段 + 事件流都有）。
+- 恢复流程：进入会话 → `page`（默认 10 条，上滑分页）→ 重建 SessionLog → 状态机从日志末端派生（最新一条文本 = 当前展示段）→ 打开 SSE（3.19）续接实时。
+- 事件流小窗历史也恢复（不是从空开始），符合“日志为真相源”（3.10）。
