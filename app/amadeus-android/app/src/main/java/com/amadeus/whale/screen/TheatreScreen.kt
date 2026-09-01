@@ -12,8 +12,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,25 +21,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.amadeus.whale.data.store.DevicePrefsStore
 import com.amadeus.whale.domain.model.AmadeusMood
 import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.theatre.DialogueBox
+import com.amadeus.whale.theatre.OverlayHost
 import com.amadeus.whale.theatre.TheatreStage
 import com.amadeus.whale.theatre.TheatreViewModel
 import com.amadeus.whale.theme.LocalAmadeusColors
 
 /**
- * 剧场（产品 1.8/架构 3.11）：Stage + DialogueBox + 输入角落唤出（占一行）+ 顶部操作。
+ * 剧场（产品 1.8/架构 3.11）：Stage + DialogueBox + 输入角落唤出（占一行）+ 顶部操作 + OverlayHost。
  * 状态提升：全部状态从 TheatreViewModel 来，组件纯展示。
  */
 @Composable
 fun TheatreScreen(
   viewModel: TheatreViewModel,
-  onOpenSaveSlot: () -> Unit = {},
-  onOpenSettings: () -> Unit = {},
-  onOpenHistory: () -> Unit = {},
-  onOpenEventSheet: () -> Unit = {},
-  onDisconnect: () -> Unit = {},
+  prefsStore: DevicePrefsStore,
+  gatewayUrl: String?,
+  onOpenSaveSlot: () -> Unit,
+  onReplayDemo: () -> Unit,
+  onDisconnect: () -> Unit,
   demoMode: Boolean = false,
   onDemoFinished: () -> Unit = {},
 ) {
@@ -96,15 +96,28 @@ fun TheatreScreen(
     // 顶部：历史/事件流 + 读档/设置
     Box(modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
       Row {
-        TextButton(onClick = onOpenHistory) { Text("记录", color = colors.primaryText) }
-        TextButton(onClick = onOpenEventSheet) { Text("幕后", color = colors.secondaryText) }
+        TextButton(onClick = { viewModel.openHistory() }) { Text("记录", color = colors.primaryText) }
+        TextButton(onClick = { viewModel.openEventLog() }) { Text("幕后", color = colors.secondaryText) }
       }
     }
     Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
       Row {
         if (!demoMode) TextButton(onClick = onOpenSaveSlot) { Text("读档", color = colors.primaryText) }
-        TextButton(onClick = onOpenSettings) { Text("设置", color = colors.primaryText) }
+        TextButton(onClick = { viewModel.openOverlay(com.amadeus.whale.theatre.OverlayState.Settings) }) {
+          Text("设置", color = colors.primaryText)
+        }
       }
     }
+
+    // 覆盖层（架构 3.12）
+    OverlayHost(
+      overlay = state.overlay,
+      prefsStore = prefsStore,
+      gatewayUrl = gatewayUrl,
+      onClose = { viewModel.closeOverlay() },
+      onReplayDemo = onReplayDemo,
+      onDisconnect = onDisconnect,
+      onResolveChoice = { choice, label -> viewModel.resolveChoice(choice, label) },
+    )
   }
 }

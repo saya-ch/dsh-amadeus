@@ -8,12 +8,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import com.amadeus.whale.data.HttpAuthService
+import com.amadeus.whale.data.HttpChoiceRepository
 import com.amadeus.whale.data.HttpSessionRepository
 import com.amadeus.whale.data.store.DevicePrefs
 import com.amadeus.whale.data.store.DevicePrefsStore
 import com.amadeus.whale.domain.AppLaunchDecider
+import com.amadeus.whale.domain.ChoiceRepository
 import com.amadeus.whale.domain.DemoFeed
 import com.amadeus.whale.domain.LaunchTarget
 import com.amadeus.whale.domain.SessionRepository
@@ -64,6 +65,11 @@ fun AppRoot(
         }
         TheatreScreen(
           viewModel = vm,
+          prefsStore = prefsStore,
+          gatewayUrl = null,
+          onOpenSaveSlot = {},
+          onReplayDemo = {},
+          onDisconnect = {},
           demoMode = true,
           onDemoFinished = {
             scope.launch { prefsStore.setDemoSeen(true) }
@@ -80,6 +86,7 @@ fun AppRoot(
           repository = authService.currentSession()?.let {
             HttpSessionRepository(it.origin.serialized, it.client)
           }
+          scope.launch { prefsStore.setGatewayUrl(authService.currentSession()?.origin?.serialized) }
           screen = if (sessionId != null) Screen.Theatre(sessionId) else Screen.SaveSlot
         },
         onBackToDemo = { screen = Screen.Demo },
@@ -118,7 +125,7 @@ private fun RealTheatreHost(
   onOpenSaveSlot: () -> Unit,
   onDisconnect: () -> Unit,
 ) {
-  val vm = remember(sessionId) { TheatreViewModel() }
+  val vm = remember(sessionId) { TheatreViewModel(choiceRepository = HttpChoiceRepository(authService.currentSession()?.origin?.serialized ?: "", authService.currentSession()?.client ?: okhttp3.OkHttpClient())) }
   val scope = rememberCoroutineScope()
   LaunchedEffect(sessionId) {
     // 恢复：历史 10 条 → 最新一条文本为当前展示（架构 3.20）
@@ -132,10 +139,10 @@ private fun RealTheatreHost(
   }
   TheatreScreen(
     viewModel = vm,
+    prefsStore = prefsStore,
+    gatewayUrl = authService.currentSession()?.origin?.serialized,
     onOpenSaveSlot = onOpenSaveSlot,
-    onOpenSettings = { /* TODO: 设置覆盖层 */ },
-    onOpenHistory = { /* TODO: 对话记录侧栏 */ },
-    onOpenEventSheet = { /* TODO: 事件流侧栏 */ },
+    onReplayDemo = { /* demo 重放走路由，AppRoot 处理 */ },
     onDisconnect = onDisconnect,
   )
 }

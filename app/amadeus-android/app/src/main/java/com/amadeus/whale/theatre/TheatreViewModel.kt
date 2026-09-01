@@ -2,9 +2,12 @@ package com.amadeus.whale.theatre
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amadeus.whale.domain.ChoiceRepository
 import com.amadeus.whale.domain.SessionLog
 import com.amadeus.whale.domain.SessionStateMachine
+import com.amadeus.whale.domain.model.Activity
 import com.amadeus.whale.domain.model.AmadeusTag
+import com.amadeus.whale.domain.model.Choice
 import com.amadeus.whale.domain.model.Dialogue
 import com.amadeus.whale.domain.model.StreamEvent
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +23,7 @@ data class TheatreUiState(
   val background: String = "bg-claude-writing-study",
   val windowId: String? = null,
   val windowType: String? = null,
+  val overlay: OverlayState? = null,
 )
 
 /**
@@ -29,6 +33,7 @@ data class TheatreUiState(
 class TheatreViewModel(
   private val log: SessionLog = SessionLog(),
   private val stateMachine: SessionStateMachine = SessionStateMachine(log),
+  private val choiceRepository: ChoiceRepository? = null,
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow(TheatreUiState())
@@ -37,6 +42,7 @@ class TheatreViewModel(
   private var demoIndex = 0
   private var demoScript: List<Dialogue> = emptyList()
   private var sender: ((String) -> Unit)? = null
+  private val activities = mutableListOf<Activity>()
 
   /** 真实模式：注入发送器（发消息给 agent）。 */
   fun setSender(sender: (String) -> Unit) { this.sender = sender }
@@ -68,9 +74,18 @@ class TheatreViewModel(
     stateMachine.onEvent(event)
     when (event) {
       is StreamEvent.DialogueEvent -> onDialogue(event.dialogue)
-      is StreamEvent.ChoiceEvent -> _uiState.value = _uiState.value.copy(typing = false)
+      is StreamEvent.ChoiceEvent -> {
+        _uiState.value = _uiState.value.copy(typing = false, overlay = OverlayState.ChoicePrompt(event.choice))
+      }
       is StreamEvent.Ended -> _uiState.value = _uiState.value.copy(typing = false)
-      is StreamEvent.ActivityEvent -> Unit
+      is StreamEvent.ActivityEvent -> {
+        activities.add(event.activity)
+        _uiState.value = _uiState.value.copy(
+          overlay = (_uiState.value.overlay as? OverlayState.EventLog)?.let {
+            OverlayState.EventLog(activities.toList())
+          } ?: _uiState.value.overlay,
+        )
+      }
     }
   }
 
@@ -104,6 +119,27 @@ class TheatreViewModel(
       typing = false,
       background = resolveBackground(last.tag),
     )
+  }
+
+  // ---- 覆盖层 ----
+
+  fun openOverlay(overlay: OverlayState) {
+    _uiState.value = _uiState.value.copy(overlay = overlay)
+  }
+
+  fun closeOverlay() {
+    _uiState.value = _uiState.value.copy(overlay = null)
+  }
+
+  fun openEventLog() = openOverlay(OverlayState.EventLog(activities.toList()))
+
+  fun openHistory() = openOverlay(OverlayState.History(log.dialogueEntries()))
+
+  fun resolveChoice(choice: Choice, label: String) {
+    viewModelScope.launch {
+      choiceRepository?.resolve(choice.choiceId, label)
+    }
+    closeOverlay()
   }
 
   private fun resolveBackground(tag: AmadeusTag): String = when (tag.mood.name) {
