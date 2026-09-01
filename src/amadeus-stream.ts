@@ -1,5 +1,6 @@
-import { parseAmadeusSegments, type AmadeusSegment } from './amadeus-tags.js'
+import { parseAmadeusTag, stripAmadeusTag, type AmadeusTag } from './amadeus-tags.js'
 import { assistantMessageText } from './amadeus-text.js'
+import { randomUUID } from 'node:crypto'
 
 /** One event carried by a DSH session follow frame or snapshot record. */
 export interface AmadeusSessionFollowEvent {
@@ -25,29 +26,47 @@ export interface AmadeusStreamContext {
   readonly sessionController: {
     follow(req: { address: { kind: 'session'; sessionId: string } }, signal?: AbortSignal): AsyncIterable<AmadeusSessionFollowFrame>
   }
+  /** Optional report persistence for the long-text interceptor (3.18). */
+  readonly reports?: {
+    save(report: { id: string; title: string; markdown: string }): Promise<void>
+  }
 }
 
 const ENDED_REASON_STREAM = 'stream_closed'
 const ENDED_REASON_SESSION = 'session_ended'
 
+/** 长文本铁律判定（架构 3.18）：len > 120 字符 或 句数 > 4 → 超长。 */
+export function isOverlong(text: string): boolean {
+  if (text.length > 120) return true
+  const sentences = text.split(/[。！？!?；;\n]/u).filter(s => s.trim().length > 0)
+  return sentences.length > 4
+}
+
+/** 截断保留前 1~2 句 + "…"（架构 3.18 兜底）。 */
+export function truncateForDialogue(text: string): string {
+  const sentences = text.split(/(?<=[。！？!?；;\n])/u).map(s => s.trim()).filter(Boolean)
+  const kept = sentences.slice(0, 2).join('').trim()
+  return kept.length >= text.length ? text : `${kept}…`
+}
+
 /**
- * Bridges a DSH session follow stream to the App SSE contract.
+ * Bridges a DSH session follow stream to the App SSE contract (3.19).
  *
  * `open` pumps the follow stream and writes one `data:` payload per frame:
- *   - assistant/message text is re-parsed into segments (`句\n[[AMW:...]]`), one
- *     `segments` frame per sentence, preserving the original tagged raw text.
+ *   - assistant/message text is ONE `dialogue` frame (protocol simplification,
+ *     3.8/3.18): the whole message is a single display, tag parsed from the
+ *     segment-tail [[AMW:...]] and sent as a `tag` object.
+ *   - overlong text (isOverlong) is intercepted (3.18 long-text rule): the
+ *     dialogue keeps the first 1~2 sentences + "…", and the FULL text is saved
+ *     as a report (window=report frame follows), without calling the model.
  *   - snapshot records are deliberately NOT folded: the App already loaded the
- *     full history (and its latest state) via `page` before opening the stream,
- *     so folding them would duplicate the current screen.
- *   - a segment whose tag opens a `choice` window is emitted as a `choice` frame
+ *     full history (and its latest state) via `page` before opening the stream.
+ *   - a tag whose window is `choice` is emitted as a `choice` frame
  *     (choiceId/question/options) instead, matching the App contract.
  *   - the stream finishes with an `ended` frame when the session ends or the
  *     follow iteration completes.
- * The returned handle closes the pump: it terminates the underlying follow
- * subscription via `iterator.return()` (so a disconnected SSE client does not
- * leave the DSH subscription alive) and is idempotent. `onFinished` fires once
- * the pump has naturally drained (used by the SSE route to end its response
- * stream); closing the pump suppresses the `ended` frame.
+ * The returned handle closes the pump. `onFinished` fires once the pump has
+ * naturally drained; closing the pump suppresses the `ended` frame.
  */
 export class AmadeusStreamHub {
   constructor(private readonly ctx: AmadeusStreamContext) {}
@@ -78,7 +97,7 @@ export class AmadeusStreamHub {
           if (frame.type !== 'event' || frame.event === undefined) continue
           const event = frame.event
           if (event.type === 'assistant/message') {
-            this.emitText(event, write)
+            await this.emitText(event, write)
           } else if (event.type === 'session/end') {
             finish(ENDED_REASON_SESSION)
             break
@@ -99,28 +118,58 @@ export class AmadeusStreamHub {
     }
   }
 
-  private emitText(event: AmadeusSessionFollowEvent, write: (data: string) => void): void {
+  private async emitText(event: AmadeusSessionFollowEvent, write: (data: string) => void): Promise<void> {
     const text = assistantMessageText(event.data)
-    if (text.length > 0) this.emit(text, write)
+    if (text.length > 0) await this.emit(text, write)
   }
 
-  private emit(text: string, write: (data: string) => void): void {
-    const segments = parseAmadeusSegments(text)
-    for (const segment of segments) {
-      write(JSON.stringify(this.payload(segment)))
-    }
-  }
-
-  private payload(segment: AmadeusSegment): Record<string, unknown> {
-    const tag = segment.tag
+  private async emit(text: string, write: (data: string) => void): Promise<void> {
+    const parsed = parseAmadeusTag(text)
+    const tag = parsed.tag
     if (tag?.window === 'choice' && typeof tag.choiceId === 'string' && (tag.options?.length ?? 0) > 0) {
-      return {
+      write(JSON.stringify({
         type: 'choice',
         choiceId: tag.choiceId,
-        question: tag.windowTitle ?? segment.clean,
+        question: tag.windowTitle ?? parsed.clean,
         options: tag.options!.map(label => ({ label })),
-      }
+      }))
+      return
     }
-    return { type: 'segments', text: segment.raw }
+    let clean = parsed.clean
+    if (isOverlong(clean)) {
+      // 长文本铁律兜底（3.18）：截断前 1~2 句进对话框，全文存报告，不调模型
+      const truncated = truncateForDialogue(clean)
+      const reportId = `amw-${randomUUID().slice(0, 8)}`
+      await this.ctx.reports?.save({
+        id: reportId,
+        title: '长文本内容',
+        markdown: clean,
+      })
+      write(JSON.stringify({
+        type: 'dialogue',
+        text: truncated,
+        tag: this.tagOrFallback(tag),
+      }))
+      write(JSON.stringify({
+        type: 'dialogue',
+        text: '详细内容我放进小窗口里啦 啾~',
+        tag: this.tagWithWindow(tag, 'report', reportId, '长文本内容'),
+      }))
+      return
+    }
+    write(JSON.stringify({
+      type: 'dialogue',
+      text: clean,
+      tag: this.tagOrFallback(tag),
+    }))
+  }
+
+  private tagOrFallback(tag: AmadeusTag | null): Record<string, unknown> {
+    return tag === null ? { mood: 'idle', sprite: 'smile', voice: 'soft', sfx: 'none', bgm: 'none' } : { ...tag }
+  }
+
+  private tagWithWindow(tag: AmadeusTag | null, window: string, windowId: string, windowTitle: string): Record<string, unknown> {
+    const base = tag === null ? {} : { ...tag }
+    return { ...base, window, windowId, windowTitle }
   }
 }

@@ -109,6 +109,17 @@ function mapAdminError(error: unknown): HttpError {
 /** Fixed first line spoken to the user right after a new session is created (方案 A). */
 export const AMADEUS_OPENING_PROMPT = '你刚在月夜礁石边遇见用户，打个招呼吧，说一句温柔的话'
 
+/** 固定开场脚本轮换（架构 3.18）：create 后按会话计数轮换，稳定优先。 */
+export const AMADEUS_OPENING_LINES = [
+  '你刚在月夜礁石边遇见用户，打个招呼吧，说一句温柔的话',
+  '新的一天开始了。你在海边遇见鲸鱼娘，她刚睡醒，和你打个招呼吧，说一句温柔的话',
+  '月夜，礁石，海风。你又一次来到海边，鲸鱼娘在等你，打个招呼吧，说一句温柔的话',
+]
+
+export function openingLineFor(index: number): string {
+  return AMADEUS_OPENING_LINES[index % AMADEUS_OPENING_LINES.length] ?? AMADEUS_OPENING_PROMPT
+}
+
 /** Create an Amadeus session, then immediately deliver the opening line (方案 A). */
 export async function createAmadeusOpeningSession(
   sessions: AmadeusSessionsAdapter,
@@ -116,9 +127,10 @@ export async function createAmadeusOpeningSession(
   mode: string,
   title?: string,
   workspaceId?: string,
+  openingIndex = 0,
 ): Promise<AmadeusSessionSummary> {
   const created = await sessions.create(mode, title, workspaceId)
-  await commands.prompt(created.id, AMADEUS_OPENING_PROMPT)
+  await commands.prompt(created.id, openingLineFor(openingIndex))
   return created
 }
 
