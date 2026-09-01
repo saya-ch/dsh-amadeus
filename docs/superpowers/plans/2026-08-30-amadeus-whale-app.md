@@ -8,7 +8,7 @@
 
 **Tech Stack:** Kotlin 2.0 / Jetpack Compose（BOM 2024.10）/ Material3 / Coil 2.6（AsyncImage）/ OkHttp 4.12 + okhttp-sse / kotlinx-serialization-json / kotlinx-coroutines / JUnit4 + kotlin.test + OkHttp MockWebServer / MediaPlayer（环境音）。
 
-**Spec:** `docs/superpowers/specs/2026-08-30-amadeus-whale-mobile-galgame-design.md`（commit 964c204）
+**Spec:** `docs/superpowers/specs/2026-09-01-amadeus-whale-experience-conclusions.md`（产品权威依据）
 
 ## Global Constraints
 

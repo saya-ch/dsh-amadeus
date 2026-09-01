@@ -179,5 +179,4 @@
 
 ## 4. 参考
 
-- 设计 spec：[2026-08-30-amadeus-whale-mobile-galgame-design.md](./2026-08-30-amadeus-whale-mobile-galgame-design.md)
-- 本轮讨论背景：App 演出层当前"能跑但不精致"，产品结论用于指导演出层重构方向。
+- 产品权威依据：[2026-09-01-amadeus-whale-experience-conclusions.md](./2026-09-01-amadeus-whale-experience-conclusions.md)（本文档）

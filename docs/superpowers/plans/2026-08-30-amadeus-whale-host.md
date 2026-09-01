@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript / Cordis（@deepseek-ai/cordis）/ DSH 服务（sessionController、sessionQuery、userQuestions、workspaceRegistry、tools、agents）/ Node 内置 http（网关已具备）。
 
-**Spec:** `docs/superpowers/specs/2026-08-30-amadeus-whale-mobile-galgame-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-01-amadeus-whale-experience-conclusions.md`（产品权威依据）
 **App 契约:** `docs/superpowers/plans/2026-08-30-amadeus-whale-app.md`（客户端按此契约实现，本计划必须满足）
 
 ## Global Constraints

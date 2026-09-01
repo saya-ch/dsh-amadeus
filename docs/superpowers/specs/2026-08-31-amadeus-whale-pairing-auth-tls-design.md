@@ -2,7 +2,7 @@
 
 日期：2026-08-31
 状态：设计已确认，待实施
-前置：`2026-08-30-amadeus-whale-mobile-galgame-design.md`（本期在其基础上补齐连接闭环）
+前置：`2026-09-01-amadeus-whale-experience-conclusions.md`（产品权威依据，连接闭环在其基础上补齐）
 
 ## 1. 目标与范围
 
