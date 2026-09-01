@@ -1,38 +1,21 @@
 package com.amadeus.whale
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.amadeus.whale.pairing.AmadeusAuthClient
-import com.amadeus.whale.pairing.AmadeusPairingService
-import com.amadeus.whale.pairing.KeystoreAesGcmCrypto
-import com.amadeus.whale.pairing.KeystoreDeviceCredentialStore
-import com.amadeus.whale.pairing.NativeAuthClient
-import com.amadeus.whale.pairing.PinnedTls
-import com.amadeus.whale.pairing.trustAllClient
-import com.amadeus.whale.theatre.AmbientSound
-import java.util.concurrent.TimeUnit
-import okhttp3.OkHttpClient
+import com.amadeus.whale.data.store.DevicePrefsStore
+import com.amadeus.whale.domain.AppLaunchDecider
+import com.amadeus.whale.root.AppRoot
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val prefs = AmadeusPrefs.from(this)
-    val sound = AmbientSound(this)
-    val credentialStore = KeystoreDeviceCredentialStore(
-      SharedPrefsStore(getSharedPreferences("amadeus_device", Context.MODE_PRIVATE)),
-      KeystoreAesGcmCrypto("amw_device_v1"),
+    val prefsStore = DevicePrefsStore(applicationContext)
+    // 骨架阶段：恢复会话暂用"无网关则 null"的最小实现（配对层后续迁移接入）
+    val decider = AppLaunchDecider(
+      prefs = { prefsStore.snapshot() },
+      restoreLastSession = { gateway -> null }, // TODO: 接入 AuthService 恢复最后活动会话
     )
-    val bootstrapClient = trustAllClient()
-    val nativeAuth = NativeAuthClient(bootstrapClient) { caDer, instanceId ->
-      OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
-        .sslSocketFactory(PinnedTls.socketFactory(caDer, instanceId), PinnedTls.trustManager(caDer, instanceId))
-        .build()
-    }
-    val authClient = AmadeusAuthClient(nativeAuth, credentialStore, bootstrapClient)
-    val pairing = AmadeusPairingService(authClient)
-    setContent { AppRoot(prefs, sound, pairing, authClient) }
+    setContent { AppRoot(prefsStore = prefsStore, launchDecider = decider) }
   }
 }

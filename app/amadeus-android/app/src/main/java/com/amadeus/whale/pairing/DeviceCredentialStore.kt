@@ -2,7 +2,7 @@ package com.amadeus.whale.pairing
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import com.amadeus.whale.PrefsStore
+import com.amadeus.whale.data.store.PrefsStore
 import java.security.KeyStore
 import java.util.Base64
 import javax.crypto.Cipher
@@ -124,6 +124,6 @@ class KeystoreDeviceCredentialStore(
   }
 
   override fun clear(origin: String) {
-    prefs.remove(key(origin))
+    (prefs as com.amadeus.whale.data.store.PrefsStore).remove(key(origin))
   }
 }

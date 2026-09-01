@@ -38,6 +38,7 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.zxing.core)
+  implementation(libs.datastore.preferences)
   debugImplementation(libs.compose.ui.tooling)
   testImplementation(libs.junit)
   testImplementation(kotlin("test"))

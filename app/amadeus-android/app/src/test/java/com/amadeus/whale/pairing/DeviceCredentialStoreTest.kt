@@ -1,6 +1,6 @@
 package com.amadeus.whale.pairing
 
-import com.amadeus.whale.PrefsStore
+import com.amadeus.whale.data.store.PrefsStore
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
