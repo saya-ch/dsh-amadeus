@@ -76,18 +76,21 @@ describe('control routes', () => {
     expect(parsed.remote).toEqual({ provider: 'frp', enabled: true, state: 'running', origin: 'https://amw.example.com' })
   })
 
-  it('filters pid from remote status', () => {
+  it('passes loginUrl and setupUrl through to the panel', () => {
     const routes = new AmadeusControlRoutes({
       isRunning: () => true,
       gateway: () => ({ origin: 'https://127.0.0.1:3444', devices: () => [], pairingStatus: () => ({ open: false }) }),
-      remoteProvider: () => 'frp',
-      remoteStatus: () => ({ enabled: true, state: 'running', origin: 'https://amw.example.com', pid: 12345 }),
+      remoteProvider: () => 'tailscale',
+      remoteStatus: () => ({ enabled: true, state: 'needs-login', loginUrl: 'https://login.tailscale.com/a/123' }),
     })
     const body = routes.controlGet().body
-    expect(body).not.toContain('"pid"')
     const parsed = JSON.parse(body) as { remote?: Record<string, unknown> }
-    expect(parsed.remote).toEqual({ provider: 'frp', enabled: true, state: 'running', origin: 'https://amw.example.com' })
-    expect(parsed.remote).not.toHaveProperty('pid')
+    expect(parsed.remote).toEqual({
+      provider: 'tailscale',
+      enabled: true,
+      state: 'needs-login',
+      loginUrl: 'https://login.tailscale.com/a/123',
+    })
   })
 })
 

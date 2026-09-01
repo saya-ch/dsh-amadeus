@@ -122,7 +122,7 @@ async function defaultProbeDiscovery(origin: string, expectedInstanceId: string,
   const timeout = setTimeout(abort, DISCOVERY_REQUEST_TIMEOUT_MS)
   timeout.unref()
   try {
-    const response = await fetch(`${origin}/mobile-access/discovery`, {
+    const response = await fetch(`${origin}/amadeus/discovery`, {
       method: 'GET',
       redirect: 'error',
       cache: 'no-store',

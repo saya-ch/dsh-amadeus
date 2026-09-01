@@ -199,7 +199,7 @@ async function defaultRemoteProbe(origin: string | undefined): Promise<RemoteObs
   const hostname = new URL(origin).hostname
   const started = performance.now()
   try {
-    const response = await fetch(new URL('/mobile-access/health', origin), {
+    const response = await fetch(new URL('/amadeus/health', origin), {
       cache: 'no-store',
       redirect: 'error',
       signal: AbortSignal.timeout(remoteDiagnosticTimeoutMs(origin)),

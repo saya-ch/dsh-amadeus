@@ -490,9 +490,9 @@ export class MobileAccessService extends Service {
     for (const active of this.local.values()) entries.set(active.manifest.id, {
       ...active.manifest,
       generation: active.digest,
-      ...(active.scriptBody === undefined ? {} : { scriptUrl: `/mobile-access/extensions/${active.manifest.id}/mobile.js?generation=${active.digest}` }),
-      ...(active.styleBody === undefined ? {} : { styleUrl: `/mobile-access/extensions/${active.manifest.id}/mobile.css?generation=${active.digest}` }),
-      assetsUrl: `/mobile-access/extensions/${active.manifest.id}/assets/`,
+      ...(active.scriptBody === undefined ? {} : { scriptUrl: `/amadeus/extensions/${active.manifest.id}/mobile.js?generation=${active.digest}` }),
+      ...(active.styleBody === undefined ? {} : { styleUrl: `/amadeus/extensions/${active.manifest.id}/mobile.css?generation=${active.digest}` }),
+      assetsUrl: `/amadeus/extensions/${active.manifest.id}/assets/`,
     })
     return [...entries.values()].sort((left, right) => left.id.localeCompare(right.id))
   }
