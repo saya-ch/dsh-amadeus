@@ -20,6 +20,8 @@ export interface AccessControllerOptions {
   readonly maxPairingAttempts: number
   readonly maxRateLimitKeys: number
   readonly now?: () => number
+  /** 跨网关共享的配对窗口槽：LAN 与远程隧道共用同一配对 token 窗口。 */
+  readonly sharedPairingWindow?: { window: PairingWindow | undefined }
 }
 
 /** Values issued once after pairing; only digests survive the response. */
@@ -57,7 +59,7 @@ export interface DeviceSummary {
   readonly revokedAt?: number
 }
 
-interface PairingWindow {
+export interface PairingWindow {
   readonly digest: Buffer
   readonly expiresAt: number
 }
@@ -148,6 +150,7 @@ export class AccessController {
   private readonly pairLimiter: BoundedRateLimiter
   private devices: StoredDevice[] = []
   private pairingWindow: PairingWindow | undefined
+  private readonly sharedPairing: { window: PairingWindow | undefined } | undefined
   private readonly sessions = new Map<string, SessionRecord>()
   private readonly sessionEndedListeners = new Set<(authorization: SessionAuthorization) => void>()
   private mutation: Promise<void> = Promise.resolve()
@@ -157,6 +160,7 @@ export class AccessController {
 
   constructor(private readonly store: DeviceStore, private readonly options: AccessControllerOptions) {
     this.now = options.now ?? Date.now
+    this.sharedPairing = options.sharedPairingWindow
     this.pairLimiter = new BoundedRateLimiter(
       options.maxPairingAttempts,
       options.rateLimitWindowMs,
@@ -245,7 +249,9 @@ export class AccessController {
       }
       const token = opaqueToken()
       const expiresAt = this.now() + ttl
-      this.pairingWindow = Object.freeze({ digest: digest(token), expiresAt })
+      const window = Object.freeze({ digest: digest(token), expiresAt })
+      if (this.sharedPairing !== undefined) this.sharedPairing.window = window
+      this.pairingWindow = window
       return Object.freeze({ token, expiresAt })
     })
   }
@@ -257,12 +263,16 @@ export class AccessController {
     if (!this.pairLimiter.take(sourceKey, now)) throw new AccessError(429, 'rate_limited')
     if (token.length > 512) throw new AccessError(401, 'authentication_failed')
     return this.exclusive(async () => {
-      const window = this.pairingWindow
+      const window = this.pairingWindow ?? this.sharedPairing?.window
       if (window === undefined || window.expiresAt <= now || !matchesDigest(token, window.digest)) {
-        if (window !== undefined && window.expiresAt <= now) this.pairingWindow = undefined
+        if (window !== undefined && window.expiresAt <= now) {
+          this.pairingWindow = undefined
+          if (this.sharedPairing !== undefined) this.sharedPairing.window = undefined
+        }
         throw new AccessError(401, 'authentication_failed')
       }
       this.pairingWindow = undefined
+      if (this.sharedPairing !== undefined) this.sharedPairing.window = undefined
       const active = this.devices.filter(device => device.revokedAt === undefined && device.expiresAt > now)
       if (active.length >= this.options.maxDevices) throw new AccessError(409, 'device_limit')
 
@@ -365,6 +375,7 @@ export class AccessController {
       this.devices = []
       for (const key of [...this.sessions.keys()]) this.removeSession(key)
       this.pairingWindow = undefined
+      if (this.sharedPairing !== undefined) this.sharedPairing.window = undefined
     })
   }
 
@@ -377,9 +388,10 @@ export class AccessController {
   /** Pairing status without exposing the one-time secret. */
   pairingStatus(): { open: boolean; expiresAt?: number } {
     this.requireInitialized()
-    const window = this.pairingWindow
+    const window = this.pairingWindow ?? this.sharedPairing?.window
     if (window === undefined || window.expiresAt <= this.now()) {
       this.pairingWindow = undefined
+      if (this.sharedPairing !== undefined) this.sharedPairing.window = undefined
       return Object.freeze({ open: false })
     }
     return Object.freeze({ open: true, expiresAt: window.expiresAt })

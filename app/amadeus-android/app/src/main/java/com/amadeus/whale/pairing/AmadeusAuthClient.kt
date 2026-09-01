@@ -134,17 +134,24 @@ class AmadeusAuthClient(
     }
     return try {
       val jar = AuthCookieJar()
-      val pinned = try {
-        baseClient.newBuilder()
-          .sslSocketFactory(
-            PinnedTls.socketFactory(credential.caCertificate, credential.instanceId),
-            PinnedTls.trustManager(credential.caCertificate, credential.instanceId),
-          )
-          .build()
-      } catch (_: Exception) {
-        return null
+      // 远程隧道：公网证书是隧道服务商的（系统 CA 信任），不能用 pin 的 client
+      val client = if (isRemoteHost(origin.host)) {
+        baseClient.newBuilder().hostnameVerifier { _, _ -> true }.build()
+      } else {
+        try {
+          baseClient.newBuilder()
+            .sslSocketFactory(
+              PinnedTls.socketFactory(credential.caCertificate, credential.instanceId),
+              PinnedTls.trustManager(credential.caCertificate, credential.instanceId),
+            )
+            // 远程隧道域名与证书 SAN（LAN IP）不匹配：CA pin 已保证真实性，跳过主机名验证
+            .hostnameVerifier { _, _ -> true }
+            .build()
+        } catch (_: Exception) {
+          return null
+        }
       }
-      buildAuthClient(pinned, jar)
+      buildAuthClient(client, jar)
     } catch (_: Exception) {
       null
     }
@@ -157,9 +164,22 @@ class AmadeusAuthClient(
   fun buildSessionClient(origin: GatewayOrigin, sessionToken: String, csrfToken: String, caDer: ByteArray, instanceId: String): OkHttpClient {
     val jar = AuthCookieJar()
     jar.store("amw_session=$sessionToken; Path=/; Secure; HttpOnly", "amw_csrf=$csrfToken; Path=/; Secure")
-    val pinned = baseClient.newBuilder()
-      .sslSocketFactory(PinnedTls.socketFactory(caDer, instanceId), PinnedTls.trustManager(caDer, instanceId))
-      .build()
-    return buildAuthClient(pinned, jar)
+    // 远程隧道：系统 CA 信任（公网证书是隧道服务商签发的）；LAN：pin 网关自签 CA
+    val client = if (isRemoteHost(origin.host)) {
+      baseClient.newBuilder().hostnameVerifier { _, _ -> true }.build()
+    } else {
+      baseClient.newBuilder()
+        .sslSocketFactory(PinnedTls.socketFactory(caDer, instanceId), PinnedTls.trustManager(caDer, instanceId))
+        .hostnameVerifier { _, _ -> true }
+        .build()
+    }
+    return buildAuthClient(client, jar)
+  }
+
+  private fun isRemoteHost(host: String): Boolean {
+    val trimmed = host.trim('[', ']')
+    val ipv4 = Regex("^(\\d{1,3}\\.){3}\\d{1,3}$").matches(trimmed)
+    val ipv6 = trimmed.contains(':')
+    return !ipv4 && !ipv6
   }
 }

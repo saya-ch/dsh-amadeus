@@ -26,6 +26,7 @@ data class TheatreUiState(
   val windowId: String? = null,
   val windowType: String? = null,
   val overlay: OverlayState? = null,
+  val demoFinished: Boolean = false,
 )
 
 /**
@@ -71,7 +72,11 @@ class TheatreViewModel(
   }
 
   private fun showDemoDialogue(index: Int) {
-    if (index >= demoScript.size) return
+    if (index >= demoScript.size) {
+      // demo 播完：标记结束（TheatreScreen 观察后回调 onDemoFinished）
+      _uiState.value = _uiState.value.copy(demoFinished = true)
+      return
+    }
     demoIndex = index
     val d = demoScript[index]
     onDialogue(d)

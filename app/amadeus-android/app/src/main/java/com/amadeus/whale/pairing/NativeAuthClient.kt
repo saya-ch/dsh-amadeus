@@ -195,6 +195,45 @@ class NativeAuthClient(
 ) {
   private val jsonType = "application/json".toMediaType()
 
+  /** 远程隧道（cpolar/tailscale 域名）：公网侧是隧道服务商的受信证书（Let's Encrypt），
+   *  不是网关自签 CA——pin 会失败。改用系统 CA 信任（跳过 hostname，因为隧道域名
+   *  与证书 SAN 可能不同）。LAN（IP）保持 pin。 */
+  private fun remoteClient(): OkHttpClient {
+    val tm = object : X509TrustManager {
+      override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+      override fun checkServerTrusted(
+        chain: Array<out java.security.cert.X509Certificate>?,
+        authType: String?,
+      ) {
+        val context = SSLContext.getInstance("TLS")
+        context.init(null, null, SecureRandom())
+        val delegate = context.socketFactory as javax.net.ssl.SSLSocketFactory
+        // 用系统默认 TrustManager 验证链
+        val tmf = javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm())
+        tmf.init(null as java.security.KeyStore?)
+        val tmDefault = tmf.trustManagers.filterIsInstance<X509TrustManager>().first()
+        tmDefault.checkServerTrusted(chain, authType)
+      }
+      override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
+    }
+    val context = SSLContext.getInstance("TLS")
+    context.init(null, arrayOf<TrustManager>(tm), SecureRandom())
+    return OkHttpClient.Builder()
+      .connectTimeout(10, TimeUnit.SECONDS)
+      .readTimeout(30, TimeUnit.SECONDS)
+      .sslSocketFactory(context.socketFactory, tm)
+      .hostnameVerifier { _, _ -> true }
+      .build()
+  }
+
+  private fun isRemoteHost(host: String): Boolean {
+    // IP（IPv4/IPv6）视为 LAN 直连；其余（域名）视为远程隧道
+    val trimmed = host.trim('[', ']')
+    val ipv4 = Regex("^(\\d{1,3}\\.){3}\\d{1,3}$").matches(trimmed)
+    val ipv6 = trimmed.contains(':')
+    return !ipv4 && !ipv6
+  }
+
   suspend fun fetchPairingCa(origin: GatewayOrigin): ByteArray = withContext(Dispatchers.IO) {
     val request = Request.Builder().url("${origin.serialized}/amadeus/ca.cer").get().build()
     try {
@@ -253,7 +292,7 @@ class NativeAuthClient(
       .url("${origin.serialized}/amadeus/auth/native-pair")
       .post(payload.toRequestBody(jsonType))
       .build()
-    postForSession(request, instanceId, PAIR_KEYS, caDer)
+    postForSession(request, instanceId, PAIR_KEYS, caDer, origin)
   }
 
   suspend fun renew(
@@ -267,7 +306,7 @@ class NativeAuthClient(
       .url("${origin.serialized}/amadeus/auth/native-renew")
       .post(payload.toRequestBody(jsonType))
       .build()
-    postForSession(request, instanceId, RENEW_KEYS, caDer)
+    postForSession(request, instanceId, RENEW_KEYS, caDer, origin)
   }
 
   private fun postForSession(
@@ -275,9 +314,13 @@ class NativeAuthClient(
     expectedInstanceId: String,
     keys: Set<String>,
     caDer: ByteArray,
+    origin: GatewayOrigin,
   ): NativeSession {
+    // 远程隧道（域名）：公网侧证书是隧道服务商签发的（受系统 CA 信任），pin 网关自签 CA 会失败
+    val isRemote = isRemoteHost(origin.host)
     val sessionClient: OkHttpClient = try {
-      sessionClientFactory(caDer, expectedInstanceId)
+      if (isRemote) remoteClient()
+      else sessionClientFactory(caDer, expectedInstanceId)
     } catch (e: SecurityException) {
       throw NativeAuthException(NativeAuthFailureKind.TLS, "tls setup failed: ${e.message}", e)
     } catch (e: SSLException) {

@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
 import { join, isAbsolute, resolve } from 'node:path'
+import { X509Certificate } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
@@ -39,6 +40,7 @@ import {
   type RemoteProviderStatus,
 } from './amadeus-remote.js'
 import { JsonDeviceStore } from './storage.js'
+import type { PairingWindow } from './access.js'
 import { JsonMobileAccessControlStore, MobileAccessGatewayController, type MobileAccessRuntime } from './control.js'
 import { parseControlFile, parseGatewayConfig, type PluginConfig, type ResolvedGatewayConfig } from './config.js'
 import { FollowingMobileAccessRuntime } from './control.js'
@@ -239,6 +241,8 @@ function loopbackTemplate(loaded: LoadedSetup): ResolvedGatewayConfig {
     ...(loaded.kind === 'managed'
       ? { upstreamOrigin: loaded.setup.upstreamOrigin }
       : loaded.config.upstreamOrigin === undefined ? {} : { upstreamOrigin: loaded.config.upstreamOrigin }),
+    // 远程网关也要提供 /amadeus/ca.cer（App bootstrap 拉 CA）——pairingCaFile 来自 managed setup 的 CA 证书
+    ...(loaded.kind === 'managed' ? { pairingCaFile: loaded.setup.tls.caCertFile } : {}),
     listenHost: '127.0.0.1',
     listenPort: 0,
     publicAuthorities: ['127.0.0.1'],
@@ -337,6 +341,10 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
 
   const holder: { gateway?: MobileAccessGateway | undefined } = {}
 
+  // LAN 与远程隧道共享配对窗口槽：pairing/open 生成的 token 必须能被远程 native-pair
+  // 验证（否则远程 401）。只共享 pairingWindow，设备/会话表保持各自独立。
+  const sharedPairingWindow: { window: PairingWindow | undefined } = { window: undefined }
+
   // Managed mode re-materializes the LAN config when the selected interface's
   // address changes; fixed mode uses the resolved config once.
   const startGateway = async (candidate: ResolvedGatewayConfig): Promise<MobileAccessRuntime> => {
@@ -345,6 +353,17 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
       new JsonDeviceStore(candidate.stateFile, candidate.maxDevices),
       amadeusAccess,
       upstreamLoginUrl,
+      {
+        pairingTtlMs: resolved.pairingTtlMs,
+        deviceTtlMs: resolved.deviceTtlMs,
+        sessionTtlMs: resolved.sessionTtlMs,
+        maxDevices: resolved.maxDevices,
+        maxSessions: resolved.maxSessions,
+        rateLimitWindowMs: resolved.rateLimitWindowMs,
+        maxPairingAttempts: resolved.maxPairingAttempts,
+        maxRateLimitKeys: resolved.maxRateLimitKeys,
+        sharedPairingWindow,
+      },
     )
     await gateway.start()
     holder.gateway = gateway
@@ -401,11 +420,22 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
   // Remote gateways share the LAN's business extension but own a digest-isolated
   // device store, so tunnel sessions never collide with LAN pairing.
   const createRemoteGateway = async (publicOrigin: string, listenPort = 0): Promise<MobileAccessGateway> => {
+    // 远程 instanceId 必须 = pairingCaFile 的 CA fingerprint（gateway.start 校验）
+    let remoteInstanceId = instanceId
+    if (resolved.pairingCaFile !== undefined) {
+      try {
+        const caPem = await readFile(resolved.pairingCaFile, 'utf8')
+        const ca = new X509Certificate(caPem)
+        remoteInstanceId = ca.fingerprint256.replaceAll(':', '').toLowerCase()
+      } catch {
+        // 读不到 CA 时退回哈希 instanceId（ca.cer 不可用，配对会失败但网关可起）
+      }
+    }
     const remoteResolved = amadeusRemoteGatewayConfig(
       resolved,
       publicOrigin,
       remoteDeviceFile,
-      instanceId,
+      remoteInstanceId,
       listenPort,
     )
     const candidate = new MobileAccessGateway(
@@ -413,6 +443,7 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
       new JsonDeviceStore(remoteResolved.stateFile, remoteResolved.maxDevices),
       amadeusAccess,
       upstreamLoginUrl,
+      { sharedPairingWindow },
     )
     await candidate.start()
     return candidate

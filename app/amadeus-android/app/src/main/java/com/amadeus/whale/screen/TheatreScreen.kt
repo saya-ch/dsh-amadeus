@@ -1,5 +1,6 @@
 package com.amadeus.whale.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,12 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +53,11 @@ fun TheatreScreen(
   val colors = LocalAmadeusColors.current
   var inputOpen by remember { mutableStateOf(false) }
   var inputText by remember { mutableStateOf("") }
+
+  // demo 播完 → 回调 onDemoFinished（跳连接页）
+  LaunchedEffect(state.demoFinished) {
+    if (state.demoFinished) onDemoFinished()
+  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     // 舞台：背景 + 立绘
@@ -90,18 +98,31 @@ fun TheatreScreen(
         typing = state.typing,
         onClick = {
           viewModel.onTap()
+          // 真实模式：点击对话框唤出输入框（demo 模式无输入）
+          if (!demoMode) inputOpen = true
           if (demoMode && !state.typing) inputOpen = false
         },
       )
     }
+    // 角落按键：唤出输入框（真实模式，架构 3.8/产品 1.8）
+    if (!demoMode) {
+      Box(modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
+        IconButton(
+          onClick = { inputOpen = !inputOpen },
+          modifier = Modifier.background(colors.cardBackground, shape = androidx.compose.foundation.shape.CircleShape),
+        ) {
+          Text(if (inputOpen) "▼" else "✎", color = colors.primaryText)
+        }
+      }
+    }
     // 顶部：历史/事件流 + 读档/设置
-    Box(modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
+    Box(modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)) {
       Row {
         TextButton(onClick = { viewModel.openHistory() }) { Text("记录", color = colors.primaryText) }
         TextButton(onClick = { viewModel.openEventLog() }) { Text("幕后", color = colors.secondaryText) }
       }
     }
-    Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+    Box(modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp)) {
       Row {
         if (!demoMode) TextButton(onClick = onOpenSaveSlot) { Text("读档", color = colors.primaryText) }
         TextButton(onClick = { viewModel.openOverlay(com.amadeus.whale.theatre.OverlayState.Settings) }) {

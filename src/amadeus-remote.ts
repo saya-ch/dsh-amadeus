@@ -65,9 +65,13 @@ export function amadeusRemoteGatewayConfig(
     throw new Error('remote public origin must be an HTTPS origin')
   }
   const publicAuthority = origin.port === '' ? `${origin.hostname}:443` : origin.host
+  // 保留 pairingCaFile：远程网关也提供 /amadeus/ca.cer（App bootstrap 拉 CA）。
+  // gateway.start() 校验 pairingCaFile 的 fingerprint === instanceId，所以远程
+  // instanceId 必须是 CA fingerprint（LAN 网关的 instanceId 就是 CA fingerprint）。
   const { pairingCaFile: _pairingCaFile, ...shared } = template
   return Object.freeze({
     ...shared,
+    ...(template.pairingCaFile === undefined ? {} : { pairingCaFile: template.pairingCaFile }),
     listenHost: '127.0.0.1',
     listenPort,
     authorities: Object.freeze([parseAuthority(publicAuthority)]),

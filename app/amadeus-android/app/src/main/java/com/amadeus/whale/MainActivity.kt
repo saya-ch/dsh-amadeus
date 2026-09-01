@@ -1,8 +1,12 @@
 package com.amadeus.whale
 
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import com.amadeus.whale.data.HttpAuthService
 import com.amadeus.whale.data.store.DevicePrefsStore
 import com.amadeus.whale.data.store.SharedPrefsStore
@@ -18,6 +22,16 @@ import okhttp3.OkHttpClient
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // 沉浸式：收起状态栏+导航栏，剧场全屏（产品 1.x：galgame 沉浸体验）
+    enableEdgeToEdge()
+    window.setFlags(
+      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+    )
+    window.insetsController?.apply {
+      hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+      systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
     val prefsStore = DevicePrefsStore(applicationContext)
     val sharedPrefs = SharedPrefsStore(
       applicationContext.getSharedPreferences("amw_credentials", android.content.Context.MODE_PRIVATE),

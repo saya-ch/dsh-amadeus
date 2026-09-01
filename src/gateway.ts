@@ -26,6 +26,7 @@ import {
   AccessController,
   AccessError,
   BoundedRateLimiter,
+  type AccessControllerOptions,
   type DeviceSummary,
   type SessionAuthorization,
 } from './access.js'
@@ -788,6 +789,7 @@ export class MobileAccessGateway {
     store: DeviceStore,
     private readonly extensions?: MobileAccessService,
     private readonly upstreamAuthenticatedUrl?: string,
+    accessOptions?: Partial<AccessControllerOptions>,
   ) {
     this.listenerTlsEnabled = config.tls.mode === 'provided'
     this.tlsEnabled = config.publicTls
@@ -800,6 +802,7 @@ export class MobileAccessGateway {
       rateLimitWindowMs: config.rateLimitWindowMs,
       maxPairingAttempts: config.maxPairingAttempts,
       maxRateLimitKeys: config.maxRateLimitKeys,
+      ...accessOptions,
     })
     this.renewLimiter = new BoundedRateLimiter(
       Math.min(100, config.maxPairingAttempts * 4),

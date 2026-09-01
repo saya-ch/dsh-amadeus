@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -139,7 +139,8 @@ private fun EventLogSheet(activities: List<com.amadeus.whale.domain.model.Activi
       Text("暂无幕后活动", color = colors.secondaryText, fontSize = 13.sp)
     } else {
       LazyColumn {
-        items(activities.takeLast(10).asReversed(), key = { "${it.kind}-${it.title}" }) { a ->
+        val reversed = activities.takeLast(10).asReversed()
+        itemsIndexed(reversed, key = { index, item -> "${reversed.size - index}-${item.kind}-${item.title}" }) { _, a ->
           ActivityRow(a)
         }
       }
@@ -177,7 +178,8 @@ private fun HistorySheet(dialogues: List<Dialogue>, onClose: () -> Unit) {
       Text("还没有对话", color = colors.secondaryText, fontSize = 13.sp)
     } else {
       LazyColumn {
-        items(dialogues.takeLast(20).asReversed(), key = { it.text }) { d ->
+        val reversed = dialogues.takeLast(20).asReversed()
+        itemsIndexed(reversed, key = { index, item -> "${reversed.size - index}-${item.text}" }) { _, d ->
           Column(modifier = Modifier.padding(vertical = 6.dp)) {
             Text(text = d.text, color = colors.primaryText, fontSize = 14.sp)
           }
