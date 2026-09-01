@@ -43,6 +43,7 @@ import com.amadeus.whale.settings.SettingsViewModel
 import com.amadeus.whale.theatre.AmbientSound
 import com.amadeus.whale.theatre.ChoiceUi
 import com.amadeus.whale.theatre.TheatreScreen
+import com.amadeus.whale.theatre.TheatreSoundListener
 import com.amadeus.whale.theatre.TheatreUiState
 import com.amadeus.whale.theatre.TheatreViewModel
 import com.amadeus.whale.window.ChoiceWindow
@@ -165,7 +166,19 @@ fun AppRoot(prefs: AmadeusPrefs, sound: AmbientSound, pairing: PairingService, a
     Screen.Demo -> {
       val vm = remember { TheatreViewModel(DemoFeed(), { "palace-night" }) }
       val state by vm.uiState.collectAsState()
-      LaunchedEffect(Unit) { vm.load(); sound.playBgm("rain"); sound.play("wave") }
+      LaunchedEffect(Unit) {
+        vm.soundListener = TheatreSoundListener { seg ->
+          // Only the demo screen runs ambient sound. Real mode is silent.
+          // Guard on `seg.tag` defaults (sfx/bgm default to "none") so a
+          // missing label in script degrades to a no-op rather than restarting
+          // the current BGM with the same track.
+          if (seg.tag.sfx.isNotBlank() && seg.tag.sfx != "none") sound.play(seg.tag.sfx)
+          if (seg.tag.bgm.isNotBlank() && seg.tag.bgm != "none") sound.playBgm(seg.tag.bgm)
+        }
+        vm.load()
+        sound.playBgm("rain")
+        sound.play("wave")
+      }
       TheatreScreen(
         viewModel = vm,
         backgroundResolver = { "palace-night" },
