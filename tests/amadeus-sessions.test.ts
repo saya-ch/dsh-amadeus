@@ -90,18 +90,24 @@ describe('session commands', () => {
     await expect(cmd.page('b1')).rejects.toThrow()
   })
 
-  it('page skips records that are not events', async () => {
+  it('page returns raw event records (3.20: App rebuilds full SessionLog)', async () => {
     const ctx = fakeCtx() as any
     ctx.__sessions.set('a1', { id: 'a1', agentPreset: 'amadeus' })
-    ctx.sessionController.page = async () => ({
-      records: [
-        { type: 'other', event: undefined },
-        { type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } },
-      ],
-      hasMore: false,
-    })
+    ctx.sessionQuery.readSurface = async () => ({ events: [], capturedThroughSeq: 3 })
+    ctx.sessionController.page = async (req: any) => {
+      expect(req.throughSeq).toBe(3)
+      return {
+        records: [
+          { type: 'other', event: undefined },
+          { type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } },
+        ],
+        hasMore: false,
+      }
+    }
     const cmd = new AmadeusSessionCommands(ctx)
     const page = await cmd.page('a1')
-    expect(page.messages).toEqual([{ role: 'user', text: '你好' }])
+    expect(page.records).toHaveLength(2)
+    expect(page.records[1]?.event.type).toBe('user/message')
+    expect(page.hasMore).toBe(false)
   })
 })
