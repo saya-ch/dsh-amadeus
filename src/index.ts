@@ -11,6 +11,16 @@ export {
   stripAllTags,
   stripAmadeusTag,
 } from './amadeus-tags.js'
+export {
+  availableLanNetworks,
+  ensureManagedCa,
+  materializeManagedSetup,
+  parseManagedSetup,
+  preferredLanInterfaceNames,
+  refreshManagedServerCertificate,
+  selectLanNetwork,
+} from './managed-setup.js'
+export type { LanNetwork, ManagedSetup } from './managed-setup.js'
 export type {
   AmadeusBgm, AmadeusMood, AmadeusSegment, AmadeusSfx,
   AmadeusSprite, AmadeusTag, AmadeusVoice, AmadeusWindow,

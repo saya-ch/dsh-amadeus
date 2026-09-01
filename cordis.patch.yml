@@ -4,6 +4,7 @@
       name: dsh-amadeus
       inject: [webServer, connection, tools, sessionQuery, sessionController, workspaceRegistry]
       config:
+        setupFile: !!js dshHomePath('amadeus/setup.json')
         stateFile: !!js dshHomePath('amadeus/devices.json')
         controlFile: !!js dshHomePath('amadeus/control.json')
         initiallyEnabled: false
