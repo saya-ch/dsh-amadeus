@@ -24,6 +24,7 @@ export default defineConfig([{
   dts: false,
   sourcemap: true,
   clean: false,
+  deps: { neverBundle: ['react', 'react-dom'] },
   outputOptions: {
     entryFileNames: 'client.js',
     banner: 'window.__ModuleLoader__.load({ id: "dsh-amadeus", factory: (require) => {',
