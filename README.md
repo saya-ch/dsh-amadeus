@@ -20,8 +20,6 @@ DSH 的自定义高权限 Mode，配套独立移动端 App「Amadeus Whale」：
 
 ## 关键原则
 
-<a href="https://trendshift.io/repositories/50668?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert%2Fponytail | Trendshift" width="250" height="55"/></a>
-
 - **不修改 DSH / dsh-mobile 源码**：完全独立项目、独立 npm 包 `dsh-amadeus`、独立 App `com.amadeus.whale`。
 - **独立网关**：`/amadeus` 前缀、端口 3444、cookie `amw_*`/`x-amw-csrf`、状态目录 `~/.dsh/amadeus/`，与 dsh-mobile（`/api/mobile-access`、3443）零重名。
 - **不是 WebView 壳**：App 原生 Compose 承担全部立绘/交互/动画（Live2D 未来接入）。

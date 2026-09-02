@@ -100,10 +100,13 @@ private fun CameraPreview(onScanned: (String) -> Unit) {
   val executor = remember { Executors.newSingleThreadExecutor() }
   val reader = remember { MultiFormatReader() }
   var lastScanAttempt by remember { mutableStateOf(0L) }
+  // PreviewView 必须在绑定前创建并传给 setSurfaceProvider（否则预览黑屏）
+  val previewView = remember { PreviewView(context).apply { implementationMode = PreviewView.ImplementationMode.PERFORMANCE } }
 
   LaunchedEffect(Unit) {
     val provider = context.getCameraProvider()
     val preview = Preview.Builder().build()
+    preview.setSurfaceProvider(previewView.surfaceProvider)
     val analysis = ImageAnalysis.Builder()
       .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
       .build()
@@ -115,7 +118,7 @@ private fun CameraPreview(onScanned: (String) -> Unit) {
       }
       lastScanAttempt = now
       val result = decodeFrame(reader, imageProxy)
-      if (result != null && result.contains("mobile-access/pair")) {
+      if (result != null && (result.contains("mobile-access/pair") || result.contains("amadeus/pair"))) {
         onScanned(result)
       }
       imageProxy.close()
@@ -129,11 +132,7 @@ private fun CameraPreview(onScanned: (String) -> Unit) {
   }
   Box(Modifier.fillMaxSize()) {
     AndroidView(
-      factory = { ctx ->
-        PreviewView(ctx).apply {
-          implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-        }
-      },
+      factory = { previewView },
       modifier = Modifier.fillMaxSize(),
     )
   }
