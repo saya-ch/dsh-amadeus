@@ -28,13 +28,13 @@ export type AmadeusApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' |
 interface PendingApproval {
   id: string
   toolName: string
-  reason?: string
+  reason: string | undefined
   resolve: (outcome: AmadeusApprovalOutcome) => void
 }
 
 /** 上下文结构：on 事件 + stream 推送。 */
 export interface AmadeusApprovalContext {
-  on(name: string, listener: (request: AmadeusApprovalRequest) => unknown, options?: { global?: boolean }): unknown
+  on(name: string, listener: (request: AmadeusApprovalRequest) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
   readonly logger?: { warn(message: string): void }
 }
 

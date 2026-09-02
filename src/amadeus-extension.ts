@@ -108,7 +108,7 @@ function id(value: unknown): string {
   return value
 }
 
-function unavailable(capability: 'sessions' | 'reports' | 'choices' | 'commands' | 'workspaces' | 'previews' | 'stream'): never {
+function unavailable(capability: 'sessions' | 'reports' | 'choices' | 'commands' | 'workspaces' | 'previews' | 'stream' | 'approval'): never {
   throw new AmadeusRequestError(503, `amadeus_${capability}_unavailable`)
 }
 
