@@ -24,7 +24,7 @@
 | 文件 | 上游来源 | 说明 |
 | --- | --- | --- |
 | `whale-shy.webp` | JAdpp/dsh-whale-galgame `assets/default/whale-shy.webp` | 害羞表情，字节级一致 |
-| `whale-think.webp`（映射 confused） | 同上 `whale-confused.webp` | 疑惑表情，字节级一致 |
+| `whale-confused.webp` | 同上 `whale-confused.webp` | 疑惑表情，字节级一致 |
 | `whale-serious.webp` | 同上 `whale-serious.webp` | 严肃表情，字节级一致 |
 | `whale-cheerful.webp` | 同上 `whale-cheerful.webp` | 开心表情，字节级一致 |
 | `whale-frightened.webp` | 同上 `whale-frightened.webp` | 惊吓表情，字节级一致 |

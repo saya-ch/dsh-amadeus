@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -72,24 +73,31 @@ fun TheatreScreen(
     ) {
       // 输入栏（平时隐藏，角落按键唤出，仅占一行，架构 3.8/产品 1.8）
       if (inputOpen) {
-        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-          OutlinedTextField(
-            value = inputText,
-            onValueChange = { inputText = it },
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("和鲸鱼娘说点什么…") },
-            singleLine = true,
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+          // 蕾丝输入框顶部装饰条（maid-atelier composer-frame，CC BY-NC-SA 4.0）
+          com.amadeus.whale.theatre.AssetImage(
+            name = "maid-composer-frame-v4",
+            modifier = Modifier.fillMaxWidth().height(34.dp),
           )
-          Spacer(Modifier.width(8.dp))
-          IconButton(
-            onClick = {
-              if (inputText.isNotBlank()) {
-                viewModel.send(inputText)
-                inputText = ""
-                inputOpen = false
-              }
-            },
-          ) { Text("发送") }
+          Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+              value = inputText,
+              onValueChange = { inputText = it },
+              modifier = Modifier.weight(1f),
+              placeholder = { Text("和鲸鱼娘说点什么…") },
+              singleLine = true,
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+              onClick = {
+                if (inputText.isNotBlank()) {
+                  viewModel.send(inputText)
+                  inputText = ""
+                  inputOpen = false
+                }
+              },
+            ) { Text("发送") }
+          }
         }
       }
       DialogueBox(

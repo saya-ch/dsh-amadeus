@@ -42,26 +42,31 @@ fun DialogueBox(
 ) {
   val colors = LocalAmadeusColors.current
   Column(modifier = Modifier.fillMaxWidth()) {
-    // 名字牌（独立小牌子，产品 1.8）
-    Box(
-      modifier = Modifier
-        .padding(start = 16.dp)
-        .clip(RoundedCornerShape(8.dp))
-        .background(colors.namePlateBg)
-        .padding(horizontal = 14.dp, vertical = 6.dp),
-    ) {
-      Text(text = speaker, color = colors.namePlateText, fontSize = 14.sp)
+    // 名字牌（居中，置于蕾丝横幅内，产品 1.8）
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+      Box(
+        modifier = Modifier
+          .clip(RoundedCornerShape(8.dp))
+          .background(colors.namePlateBg)
+          .padding(horizontal = 18.dp, vertical = 6.dp),
+      ) {
+        Text(text = speaker, color = colors.namePlateText, fontSize = 15.sp)
+      }
     }
     Spacer(Modifier.height(4.dp))
-    // 对话框主体
+    // 蕾丝顶边（maid-atelier composer-frame，CC BY-NC-SA 4.0）
+    AssetImage(
+      name = "maid-composer-frame-v4",
+      modifier = Modifier.fillMaxWidth().height(26.dp),
+    )
+    // 对话框主体（深蓝金边，华丽的 galgame 门面）
     Box(
       modifier = Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(20.dp))
         .background(colors.dialogueBox)
-        .border(1.dp, colors.dialogueBorder, RoundedCornerShape(20.dp))
+        .border(2.dp, colors.dialogueBorder, RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
         .clickable(onClick = onClick)
-        .padding(horizontal = 20.dp, vertical = 16.dp),
+        .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
       Column {
         Typewriter(text = text, typing = typing, modifier = Modifier.fillMaxWidth())
@@ -72,6 +77,13 @@ fun DialogueBox(
           BreathingArrow(visible = !typing)
         }
       }
+    }
+    // 底部金线收边（maid-atelier bottom-crest，CC BY-NC-SA 4.0）
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+      AssetImage(
+        name = "maid-bottom-crest-v1",
+        modifier = Modifier.fillMaxWidth(0.4f).height(34.dp),
+      )
     }
   }
 }

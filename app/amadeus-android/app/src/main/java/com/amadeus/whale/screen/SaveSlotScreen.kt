@@ -59,14 +59,49 @@ fun SaveSlotScreen(
   LaunchedEffect(Unit) { sessions = repository.list() }
 
   Column(modifier = Modifier.fillMaxSize().background(colors.screenBackground)) {
-    // 顶部标题
-    Text(
-      text = "读档",
-      style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
-      color = colors.primaryText,
-      modifier = Modifier.padding(20.dp),
-    )
+    // 顶部：settings-frame 实心深海蓝大横幅（maid-atelier，CC BY-NC-SA 4.0）
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(96.dp),
+    ) {
+      com.amadeus.whale.theatre.AssetImage(
+        name = "maid-settings-frame-v1",
+        modifier = Modifier.fillMaxSize(),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+      )
+      // 缎带标题（ribbon 叠在横幅上）
+      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        com.amadeus.whale.theatre.AssetImage(
+          name = "maid-workspace-ribbon-v2",
+          modifier = Modifier.fillMaxWidth(0.7f).height(52.dp),
+        )
+        Text(
+          text = "读档",
+          style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
+          fontWeight = FontWeight.Bold,
+          color = colors.namePlateText,
+          modifier = Modifier.align(Alignment.Center),
+        )
+      }
+      // 盾牌角标（右上）
+      com.amadeus.whale.theatre.AssetImage(
+        name = "maid-workspace-shield-v2",
+        modifier = Modifier
+          .align(Alignment.CenterEnd)
+          .padding(end = 24.dp)
+          .height(64.dp),
+        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+      )
+      // 返回（左上）
+      Text(
+        text = "‹ 返回",
+        color = colors.namePlateText,
+        fontSize = 16.sp,
+        modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp).clickable(onClick = onBack),
+      )
+    }
+    Spacer(Modifier.height(16.dp))
     // 新建（"开启新的一天"仪式感，产品 1.10）
     Button(
       onClick = {
@@ -101,10 +136,6 @@ fun SaveSlotScreen(
           )
         }
       }
-    }
-    // 底部返回
-    Box(modifier = Modifier.padding(12.dp)) {
-      OutlinedButton(onClick = onBack) { Text("返回") }
     }
   }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amadeus.whale.data.store.DevicePrefsStore
@@ -72,43 +74,58 @@ fun SettingsOverlay(
     modifier = Modifier
       .fillMaxWidth()
       .fillMaxHeight(0.62f)
-      .background(colors.sheetBackground, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-      .padding(20.dp),
+      .background(colors.sheetBackground, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
   ) {
-    // 标题 + 关闭
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    // 顶部深蓝横幅（maid-atelier settings-frame，CC BY-NC-SA 4.0）
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(64.dp)
+        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+    ) {
+      com.amadeus.whale.theatre.AssetImage(
+        name = "maid-settings-frame-v1",
+        modifier = Modifier.fillMaxSize(),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+      )
       Text(
         text = "设置",
         style = MaterialTheme.typography.headlineSmall,
-        color = colors.primaryText,
-        modifier = Modifier.weight(1f),
+        color = colors.namePlateText,
+        modifier = Modifier.align(Alignment.Center).padding(start = 8.dp),
       )
-      Text(text = "✕", color = colors.secondaryText, fontSize = 18.sp, modifier = Modifier.clickable(onClick = onClose))
-    }
-    Spacer(Modifier.height(12.dp))
-
-    // 分页 Tab
-    Row {
-      TabItem("演出", tab == SettingsTab.PERFORMANCE) { tab = SettingsTab.PERFORMANCE }
-      TabItem("连接", tab == SettingsTab.CONNECTION) { tab = SettingsTab.CONNECTION }
-    }
-    HorizontalDivider(color = colors.cardBorder, thickness = 1.dp)
-    Spacer(Modifier.height(12.dp))
-
-    when (tab) {
-      SettingsTab.PERFORMANCE -> PerformanceTab(prefsStore, prefs, colors, scope)
-      SettingsTab.CONNECTION -> ConnectionTab(
-        gatewayUrl = gatewayUrl,
-        onDisconnect = onDisconnect,
-        onReconnect = onReconnect,
-        colors = colors,
+      Text(
+        text = "✕",
+        color = colors.namePlateText,
+        fontSize = 20.sp,
+        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp).clickable(onClick = onClose),
       )
     }
-    Spacer(Modifier.weight(1f))
+    Spacer(Modifier.height(16.dp))
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+      // 分页 Tab
+      Row {
+        TabItem("演出", tab == SettingsTab.PERFORMANCE) { tab = SettingsTab.PERFORMANCE }
+        TabItem("连接", tab == SettingsTab.CONNECTION) { tab = SettingsTab.CONNECTION }
+      }
+      HorizontalDivider(color = colors.cardBorder, thickness = 1.dp)
+      Spacer(Modifier.height(12.dp))
 
-    // 底部：demo 重放
-    OutlinedButton(onClick = onReplayDemo, modifier = Modifier.fillMaxWidth()) {
-      Text("重放 demo")
+      when (tab) {
+        SettingsTab.PERFORMANCE -> PerformanceTab(prefsStore, prefs, colors, scope)
+        SettingsTab.CONNECTION -> ConnectionTab(
+          gatewayUrl = gatewayUrl,
+          onDisconnect = onDisconnect,
+          onReconnect = onReconnect,
+          colors = colors,
+        )
+      }
+      Spacer(Modifier.weight(1f))
+
+      // 底部：demo 重放
+      OutlinedButton(onClick = onReplayDemo, modifier = Modifier.fillMaxWidth()) {
+        Text("重放 demo")
+      }
     }
   }
 }
