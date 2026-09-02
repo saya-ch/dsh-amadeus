@@ -246,12 +246,3 @@ export class JsonRemoteProviderStore {
     }
   }
 }
-
-/** Resolve the first-run provider without letting environment values bypass validation. */
-export function configuredRemoteProvider(environment: NodeJS.ProcessEnv): RemoteProvider {
-  const value = environment.DSH_MOBILE_REMOTE_PROVIDER ?? 'tailscale'
-  if (value !== 'tailscale' && value !== 'cpolar' && value !== 'frp') {
-    throw new Error('DSH_MOBILE_REMOTE_PROVIDER must be tailscale, cpolar, or frp')
-  }
-  return value
-}

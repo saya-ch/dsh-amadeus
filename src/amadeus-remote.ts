@@ -17,7 +17,6 @@ export type { RemoteProvider, RemoteProviderController, RemoteProviderState, Rem
 export {
   JsonRemoteProviderStore,
   RemoteProviderCoordinator,
-  configuredRemoteProvider,
   parseRemoteProviderState,
   settleRemoteResources,
   terminateRemoteProcess,
