@@ -466,7 +466,10 @@ function installSection(): { root: HTMLElement; refresh: () => Promise<void>; re
     image.width = 176
     image.height = 176
     image.src = `data:image/svg+xml;base64,${btoa(svg)}`
+    // 强制显示：即使 render() 曾因 running 状态隐藏过 qrBox，也强制恢复
     target.hidden = false
+    target.style.display = 'flex'
+    target.scrollIntoView({ block: 'nearest' })
     target.append(image)
   }
 
@@ -496,6 +499,8 @@ function installSection(): { root: HTMLElement; refresh: () => Promise<void>; re
       .then(render, error => { status.textContent = `请求失败：${String(error)}` })
       .finally(() => { toggle.disabled = false })
   })
+  pair.addEventListener('click', () => { pair.disabled = true; openPairing('key') })
+  linkPair.addEventListener('click', () => { linkPair.disabled = true; openPairing('link') })
 
   const renderDevices = (data: Record<string, unknown>): void => {
     const devices = Array.isArray(data.devices) ? data.devices as Record<string, unknown>[] : []
