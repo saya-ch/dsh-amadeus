@@ -15,9 +15,8 @@ import com.amadeus.whale.pairing.AmadeusAuthClient
 import com.amadeus.whale.pairing.KeystoreDeviceCredentialStore
 import com.amadeus.whale.pairing.NativeAuthClient
 import com.amadeus.whale.pairing.PinnedTls
+import com.amadeus.whale.pairing.trustAllClient
 import com.amadeus.whale.root.AppRoot
-import java.util.concurrent.TimeUnit
-import okhttp3.OkHttpClient
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,11 +36,9 @@ class MainActivity : ComponentActivity() {
       applicationContext.getSharedPreferences("amw_credentials", android.content.Context.MODE_PRIVATE),
     )
 
-    // 配对用的 bootstrap client（不 pin，用于 ca.cer 拉取）
-    val bootstrapClient = OkHttpClient.Builder()
-      .connectTimeout(5, TimeUnit.SECONDS)
-      .readTimeout(8, TimeUnit.SECONDS)
-      .build()
+    // 配对用的 bootstrap client（trust-all：拉 ca.cer 时还没有 CA 可信任，
+    // 配对成功后换成 pin 后的 session client）
+    val bootstrapClient = trustAllClient()
 
     // session client 工厂：配对成功后用 pin 后的 client 建仓库
     val credentialStore = KeystoreDeviceCredentialStore(sharedPrefs)
