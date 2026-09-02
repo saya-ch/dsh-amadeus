@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
 
     // 配对用的 bootstrap client（不 pin，用于 ca.cer 拉取）
     val bootstrapClient = OkHttpClient.Builder()
-      .connectTimeout(10, TimeUnit.SECONDS)
-      .readTimeout(30, TimeUnit.SECONDS)
+      .connectTimeout(5, TimeUnit.SECONDS)
+      .readTimeout(8, TimeUnit.SECONDS)
       .build()
 
     // session client 工厂：配对成功后用 pin 后的 client 建仓库
@@ -62,9 +62,16 @@ class MainActivity : ComponentActivity() {
     val decider = AppLaunchDecider(
       prefs = { prefsStore.snapshot() },
       restoreLastSession = { gateway ->
-        // 恢复已保存凭据（架构 3.7）
-        authService.restore(gateway)?.let { client ->
-          authService.currentSession()?.let { it.origin.serialized }
+        // 恢复已保存凭据（架构 3.7）；5s 超时兜底——旧网关（cpolar origin 变化后）连不上
+        // 时快速降级到连接页，绝不卡黑屏（真机验证发现 restore 挂起黑屏）
+        try {
+          kotlinx.coroutines.withTimeout(5_000) {
+            authService.restore(gateway)?.let { client ->
+              authService.currentSession()?.let { it.origin.serialized }
+            }
+          }
+        } catch (error: Exception) {
+          null
         }
       },
     )

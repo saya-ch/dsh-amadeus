@@ -46,7 +46,12 @@ fun AppRoot(
 
   // 启动决策：标题画面展示期间读状态，决策完切到目标 Screen
   LaunchedEffect(Unit) {
-    val target = launchDecider.decide()
+    val target = try {
+      launchDecider.decide()
+    } catch (error: Exception) {
+      // 启动决策异常兜底：绝不黑屏，降级到连接页
+      LaunchTarget.ConnectDaily
+    }
     screen = when (target) {
       is LaunchTarget.FirstRunDemo -> Screen.Demo
       is LaunchTarget.ConnectDaily -> Screen.Connection(firstPairing = false)

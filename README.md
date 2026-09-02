@@ -20,6 +20,8 @@ DSH 的自定义高权限 Mode，配套独立移动端 App「Amadeus Whale」：
 
 ## 关键原则
 
+<a href="https://trendshift.io/repositories/50668?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert%2Fponytail | Trendshift" width="250" height="55"/></a>
+
 - **不修改 DSH / dsh-mobile 源码**：完全独立项目、独立 npm 包 `dsh-amadeus`、独立 App `com.amadeus.whale`。
 - **独立网关**：`/amadeus` 前缀、端口 3444、cookie `amw_*`/`x-amw-csrf`、状态目录 `~/.dsh/amadeus/`，与 dsh-mobile（`/api/mobile-access`、3443）零重名。
 - **不是 WebView 壳**：App 原生 Compose 承担全部立绘/交互/动画（Live2D 未来接入）。
@@ -45,18 +47,19 @@ DSH 的自定义高权限 Mode，配套独立移动端 App「Amadeus Whale」：
 
 真实会话闭环，运行在 DSH Host 进程内（Cordis 插件，服务名 `amadeusAccess`）：
 
-| 模块 | 职责 |
-| --- | --- |
-| `amadeus-plugin.ts` | 插件入口：注入真实 adapter、注册工具、安装 answerer、开场 prompt |
+
+| 模块                   | 职责                                                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `amadeus-plugin.ts`    | 插件入口：注入真实 adapter、注册工具、安装 answerer、开场 prompt                                                |
 | `amadeus-extension.ts` | 业务路由（/status、/sessions、/reports、/previews、/choice、/choice/cancel、/workspaces、/stream、/tag/ensure） |
-| `amadeus-sessions.ts` | 会话 adapter（`sessionQuery.listSessions` 过滤 agentPreset + `sessionController`） |
-| `amadeus-reports.ts` | 报告/预览持久化（`~/.dsh/amadeus/reports.json` / `previews.json`） |
-| `amadeus-choices.ts` | choice adapter + `user-questions/request` answerer |
-| `amadeus-stream.ts` | `follow()` → SSE 流（segments/choice/ended） |
-| `amadeus-tools.ts` | `save_report` / `show_preview` 工具 |
-| `amadeus-control.ts` | 控制面板真实状态（running/devices/pairing） |
-| `amadeus-remote.ts` | 远程 provider 框架（FRP 优先，frpc 实接后续迭代） |
-| `gateway.ts` | 独立安全网关（配对/证书/CSRF/SSE/WebSocket 代理） |
+| `amadeus-sessions.ts`  | 会话 adapter（`sessionQuery.listSessions` 过滤 agentPreset + `sessionController`）                              |
+| `amadeus-reports.ts`   | 报告/预览持久化（`~/.dsh/amadeus/reports.json` / `previews.json`）                                              |
+| `amadeus-choices.ts`   | choice adapter +`user-questions/request` answerer                                                               |
+| `amadeus-stream.ts`    | `follow()` → SSE 流（segments/choice/ended）                                                                   |
+| `amadeus-tools.ts`     | `save_report` / `show_preview` 工具                                                                             |
+| `amadeus-control.ts`   | 控制面板真实状态（running/devices/pairing）                                                                     |
+| `amadeus-remote.ts`    | 远程 provider 框架（FRP 优先，frpc 实接后续迭代）                                                               |
+| `gateway.ts`           | 独立安全网关（配对/证书/CSRF/SSE/WebSocket 代理）                                                               |
 
 业务 REST 基址：`<gateway>/amadeus/extensions/amadeus/routes`。SSE：`GET <routes>/stream/:sessionId`。管理路由：`/api/amadeus`。
 
