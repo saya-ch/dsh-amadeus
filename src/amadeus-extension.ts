@@ -13,7 +13,17 @@ export interface AmadeusSessionSummary {
   readonly title: string
   readonly mode: typeof AMADEUS_MODE_ID
   readonly updatedAt: number
+  /** 会话所属工作区显示名（cwd 目录名）；空 = 无归属（dsh 默认 cwd）。 */
+  readonly workspace?: string
   readonly lastMessage?: string
+}
+
+/** 目录浏览一层（App 内目录选择器）：面包屑 + 子目录。 */
+export interface AmadeusDirectoryListing {
+  readonly path: string
+  readonly home: string
+  readonly crumbs: Array<{ name: string; path: string }>
+  readonly entries: Array<{ name: string; path: string; hidden: boolean }>
 }
 
 /** Persisted report owned by the Amadeus business adapter. */
@@ -54,6 +64,10 @@ export interface AmadeusGatewayOptions {
   /** Workspace listing for the GET /workspaces route. */
   readonly workspaces?: {
     list(): Promise<Array<{ id: string; path: string; title: string }>>
+    /** 列目录一层（App 内目录浏览器用；path 缺省 = 主目录）。 */
+    browse(path?: string): Promise<AmadeusDirectoryListing>
+    /** 把目录注册为工作区（App 选定目录后）。 */
+    register(path: string): Promise<{ id: string; path: string; title: string }>
   }
   /** Persisted previews for the GET /previews/:id route. */
   readonly previews?: {
@@ -72,7 +86,7 @@ export interface AmadeusGatewayOptions {
 const MAX_BODY_BYTES = 64 * 1024
 const ID_PATTERN = /^[a-zA-Z0-9_-]{1,128}$/u
 
-class AmadeusRequestError extends Error {
+export class AmadeusRequestError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code) }
 }
 
@@ -206,6 +220,18 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
         const workspaces = options.workspaces ?? unavailable('workspaces')
         return json({ workspaces: await workspaces.list() })
       }),
+      route('GET', '/workspaces/browse', async request => {
+        const workspaces = options.workspaces ?? unavailable('workspaces')
+        const path = request.query.get('path') ?? undefined
+        return json({ listing: await workspaces.browse(path) })
+      }),
+      route('POST', '/workspaces/register', async request => {
+        const workspaces = options.workspaces ?? unavailable('workspaces')
+        const body = readObject(request)
+        const path = body.path
+        if (typeof path !== 'string' || path.length === 0 || path.length > 4096) return badRequest()
+        return json({ workspace: await workspaces.register(path) })
+      }),
       route('GET', '/previews', async request => {
         const previewId = id(request.pathname.slice('/previews/'.length))
         const previews = options.previews ?? unavailable('previews')
@@ -236,10 +262,10 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
           if (hubClose !== undefined) void hubClose()
           if (!source.destroyed) source.push(null)
         }
-        const onAbort = (): void => endStream()
+        const onAbort = (): void => { console.error(`[amw-stream] abort session=${sessionId.slice(0,8)} at=${Date.now()}`); endStream() }
         request.signal.addEventListener('abort', onAbort, { once: true })
         push('retry: 2000\n')
-        heartbeat = setInterval(() => push(': heartbeat\n\n'), 15_000)
+        heartbeat = setInterval(() => push(': heartbeat\n\n'), 5_000)
         heartbeat.unref()
         source.once('close', endStream)
         void stream.open(sessionId, writeFrame, endStream).then(close => {

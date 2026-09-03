@@ -59,13 +59,13 @@ class MainActivity : ComponentActivity() {
     val decider = AppLaunchDecider(
       prefs = { prefsStore.snapshot() },
       restoreLastSession = { gateway ->
-        // 恢复已保存凭据（架构 3.7）；5s 超时兜底——旧网关（cpolar origin 变化后）连不上
-        // 时快速降级到连接页，绝不卡黑屏（真机验证发现 restore 挂起黑屏）
+        // 恢复已保存凭据（架构 3.7）；成功返回上次会话 id（有则回 Connected 续聊，无则占位懒查）。
+        // 5s 超时兜底——旧网关连不上时快速降级到连接页，绝不卡黑屏。
         try {
           kotlinx.coroutines.withTimeout(5_000) {
-            authService.restore(gateway)?.let { client ->
-              authService.currentSession()?.let { it.origin.serialized }
-            }
+            if (authService.restore(gateway) != null) {
+              prefsStore.snapshot().lastSessionId ?: "restored"
+            } else null
           }
         } catch (error: Exception) {
           null

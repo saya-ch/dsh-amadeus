@@ -61,16 +61,29 @@ class HttpChoiceRepository(
   private val routes = "${baseUrl.trimEnd('/')}/amadeus/extensions/amadeus/routes"
   private val json = Json { ignoreUnknownKeys = true }
 
-  override suspend fun resolve(choiceId: String, selected: String) = withContext(Dispatchers.IO) {
+  override suspend fun resolve(choiceId: String, selected: String): Unit = withContext(Dispatchers.IO) {
     val body = """{"choiceId":${jsonString(choiceId)},"selected":${jsonString(selected)}}"""
-    client.newCall(Request.Builder().url("$routes/choice")
-      .post(body.toRequestBody(JSON)).build()).execute().use { }
+    try {
+      client.newCall(Request.Builder().url("$routes/choice")
+        .post(body.toRequestBody(JSON)).build()).execute().use { res ->
+        android.util.Log.d("AMW", "choice resolve ${res.code} id=${choiceId.take(12)} sel=${selected.take(16)}")
+        if (!res.isSuccessful) android.util.Log.e("AMW", "choice resolve failed ${res.code}: ${res.body?.string()?.take(120)}")
+      }
+    } catch (error: Exception) {
+      android.util.Log.e("AMW", "choice resolve error ${error.message}")
+    }
   }
 
-  override suspend fun cancel(choiceId: String) = withContext(Dispatchers.IO) {
+  override suspend fun cancel(choiceId: String): Unit = withContext(Dispatchers.IO) {
     val body = """{"choiceId":${jsonString(choiceId)}}"""
-    client.newCall(Request.Builder().url("$routes/choice/cancel")
-      .post(body.toRequestBody(JSON)).build()).execute().use { }
+    try {
+      client.newCall(Request.Builder().url("$routes/choice/cancel")
+        .post(body.toRequestBody(JSON)).build()).execute().use { res ->
+        android.util.Log.d("AMW", "choice cancel ${res.code}")
+      }
+    } catch (error: Exception) {
+      android.util.Log.e("AMW", "choice cancel error ${error.message}")
+    }
   }
 
   private companion object {

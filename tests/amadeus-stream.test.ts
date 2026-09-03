@@ -44,7 +44,7 @@ function controllableFollow(initial: any[] = []) {
 describe('stream hub', () => {
   it('emits a dialogue frame from a follow event (protocol simplified, 3.8/3.18)', async () => {
     const frames = [
-      { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '好呀\n[[AMW:{"mood":"happy","sprite":"wag","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
+      { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '好呀\n[[AMW:{"sprite":"happy","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
     ]
     const hub = new AmadeusStreamHub(framesFor(...frames))
     const written: string[] = []
@@ -54,12 +54,12 @@ describe('stream hub', () => {
     const payload = JSON.parse(written[0]!) as { type: string; text: string; tag?: Record<string, unknown> }
     expect(payload.type).toBe('dialogue')
     expect(payload.text).toBe('好呀')
-    expect(payload.tag?.mood).toBe('happy')
-    expect(payload.tag?.sprite).toBe('wag')
+    expect(payload.tag?.sprite).toBe('happy')
+    expect(payload.tag?.window).toBeUndefined()
   })
 
   it('emits a choice frame for a choice-window segment', async () => {
-    const text = '请选择\n[[AMW:{"mood":"happy","sprite":"talk","voice":"soft","sfx":"bell","bgm":"none","window":"choice","windowTitle":"选择路径","choiceId":"cq_1","options":["A","B"]}]]'
+    const text = '请选择\n[[AMW:{"sprite":"happy","voice":"soft","sfx":"bell","bgm":"none","window":"choice","windowTitle":"选择路径","choiceId":"cq_1","options":["A","B"]}]]'
     const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))
@@ -98,7 +98,7 @@ describe('stream hub', () => {
   })
 
   it('treats a whole multi-sentence reply as ONE dialogue frame (no per-sentence split, 3.8)', async () => {
-    const text = '第一句\n第二句\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]'
+    const text = '第一句\n第二句\n[[AMW:{"sprite":"normal","voice":"soft","sfx":"none","bgm":"none"}]]'
     const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))
@@ -113,7 +113,7 @@ describe('stream hub', () => {
   it('intercepts overlong text: truncates to 1-2 sentences + report window (long-text rule, 3.18)', async () => {
     const long = '这是第一句。这是第二句。这是第三句。这是第四句。这是第五句。这一段已经超过四个句子所以触发长文本拦截。'
     let savedReport: { id: string; title: string; markdown: string } | undefined
-    const ctx = framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: `${long}\n[[AMW:{"mood":"idle","sprite":"smile"}]]` }] } } } })
+    const ctx = framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: `${long}\n[[AMW:{"sprite":"normal"}]]` }] } } } })
     ctx.reports = { save: async (r: any) => { savedReport = r } }
     const hub = new AmadeusStreamHub(ctx)
     const written: string[] = []
@@ -131,7 +131,7 @@ describe('stream hub', () => {
   })
 
   it('does not intercept a normal-length reply', async () => {
-    const text = '呜... 月光照在礁石上呢...\n[[AMW:{"mood":"happy","sprite":"wag"}]]'
+    const text = '呜... 月光照在礁石上呢...\n[[AMW:{"sprite":"happy"}]]'
     const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))
     const written: string[] = []
     const close = await hub.open('s1', d => written.push(d))
@@ -165,8 +165,8 @@ describe('stream hub', () => {
       type: 'snapshot',
       records: [
         { type: 'event', event: { type: 'user/message', data: { content: [{ type: 'text', text: '你好' }] } } },
-        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '早呀\n[[AMW:{"mood":"happy","sprite":"wag","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
-        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '最新\n[[AMW:{"mood":"happy","sprite":"smile","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
+        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '早呀\n[[AMW:{"sprite":"happy","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
+        { type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '最新\n[[AMW:{"sprite":"normal","voice":"soft","sfx":"none","bgm":"none"}]]' }] } } } },
       ],
     }
     const hub = new AmadeusStreamHub(framesFor(snapshot))

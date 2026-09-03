@@ -5,9 +5,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.sp
 import com.amadeus.whale.theme.AmadeusMotion
 import kotlinx.coroutines.delay
 
@@ -23,10 +26,20 @@ fun Typewriter(
   typing: Boolean,
   modifier: Modifier = Modifier,
   speed: Int = 1, // 0=慢 1=中 2=快
+  textColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
+  fontSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+  onTextLayout: ((TextLayoutResult) -> Unit)? = null,
+  onFinished: (() -> Unit)? = null,
 ) {
   var shown by remember(text) { mutableIntStateOf(0) }
+  var finished by remember(text) { mutableStateOf(false) }
   LaunchedEffect(text, typing, speed) {
-    if (!typing) { shown = text.length; return@LaunchedEffect }
+    if (!typing) {
+      shown = text.length
+      if (!finished && onFinished != null) { finished = true; onFinished() }
+      return@LaunchedEffect
+    }
+    finished = false
     val baseMs = when (speed) { 0 -> 60; 2 -> 30; else -> 45 }
     shown = 0
     for (i in 1..text.length) {
@@ -41,6 +54,19 @@ fun Typewriter(
       }
       delay(wait.toLong())
     }
+    if (onFinished != null) { finished = true; onFinished() }
   }
-  BasicText(text = text.take(shown), modifier = modifier)
+  BasicText(
+    text = text.take(shown),
+    modifier = modifier,
+    onTextLayout = onTextLayout,
+    style = if (textColor == androidx.compose.ui.graphics.Color.Unspecified)
+      androidx.compose.ui.text.TextStyle(fontFamily = com.amadeus.whale.theme.AmadeusFontFamily, fontSize = fontSize)
+    else
+      androidx.compose.ui.text.TextStyle(
+        color = textColor,
+        fontFamily = com.amadeus.whale.theme.AmadeusFontFamily,
+        fontSize = fontSize,
+      ),
+  )
 }

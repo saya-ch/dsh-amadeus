@@ -16,6 +16,15 @@ interface SessionRepository {
   /** 新建会话（默认工作区或指定）。 */
   suspend fun create(workspaceId: String? = null): AmadeusSession
 
+  /** 已注册工作区列表（会话选择器用）。 */
+  suspend fun listWorkspaces(): List<WorkspaceView>
+
+  /** 列目录一层（App 内目录浏览器；path 缺省 = 主目录）。 */
+  suspend fun browseDirectory(path: String? = null): DirectoryListingView
+
+  /** 把目录注册为工作区（App 选定目录后），返回其 id。 */
+  suspend fun registerWorkspace(path: String): WorkspaceView
+
   /** 改名 / 删除（读档页长按）。 */
   suspend fun rename(sessionId: String, title: String)
   suspend fun archive(sessionId: String)
@@ -41,6 +50,21 @@ interface WindowRepository {
 
 data class ReportView(val id: String, val title: String, val markdown: String, val createdAt: Long)
 data class PreviewView(val id: String, val type: String, val content: String, val title: String)
+
+/** 工作区视图（会话选择器：默认 Amadeus 工作区 / 其他目录）。 */
+data class WorkspaceView(
+  val id: String,
+  val path: String,
+  val title: String,
+)
+
+/** 目录浏览一层（App 内目录选择器）：面包屑 + 子目录。 */
+data class DirectoryListingView(
+  val path: String,
+  val home: String,
+  val crumbs: List<Pair<String, String>>, // (name, path)
+  val entries: List<Triple<String, String, Boolean>>, // (name, path, hidden)
+)
 
 /** 选项 Repository（ask_user_question，产品 1.9）。 */
 interface ChoiceRepository {

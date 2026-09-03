@@ -1,7 +1,6 @@
 package com.amadeus.whale.data
 
 import com.amadeus.whale.domain.model.Activity
-import com.amadeus.whale.domain.model.AmadeusMood
 import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.domain.model.AmadeusTag
 import com.amadeus.whale.domain.model.AmadeusVoice
@@ -27,7 +26,8 @@ object StreamEventParser {
       "dialogue" -> {
         val text = (obj["text"] as? JsonPrimitive)?.content ?: return null
         val tag = parseTag(obj["tag"] as? JsonObject)
-        StreamEvent.DialogueEvent(Dialogue(text, tag))
+        val working = (obj["working"] as? JsonPrimitive)?.content == "true"
+        StreamEvent.DialogueEvent(Dialogue(text, tag, working))
       }
       "activity" -> {
         val kind = (obj["kind"] as? JsonPrimitive)?.content ?: return null
@@ -54,6 +54,7 @@ object StreamEventParser {
         StreamEvent.ApprovalEvent(ApprovalRequest(approvalId, toolName, reason))
       }
       "ended" -> StreamEvent.Ended((obj["reason"] as? JsonPrimitive)?.content ?: "")
+      "turn" -> StreamEvent.TurnEnded((obj["reason"] as? JsonPrimitive)?.content ?: "")
       else -> null
     }
   }
@@ -61,15 +62,10 @@ object StreamEventParser {
   private fun parseTag(o: JsonObject?): AmadeusTag {
     if (o == null) return AmadeusTag()
     fun str(k: String) = (o[k] as? JsonPrimitive)?.contentOrNull ?: ""
-    fun enumOf(name: String, values: Array<out Enum<*>>): Int = values.indexOfFirst { it.name == name }
-    val mood = enumOf(str("mood"), AmadeusMood.entries.toTypedArray())
-      .takeIf { it >= 0 }?.let { AmadeusMood.entries[it] } ?: AmadeusMood.idle
-    val sprite = enumOf(str("sprite"), AmadeusSprite.entries.toTypedArray())
-      .takeIf { it >= 0 }?.let { AmadeusSprite.entries[it] } ?: AmadeusSprite.smile
-    val voice = enumOf(str("voice"), AmadeusVoice.entries.toTypedArray())
-      .takeIf { it >= 0 }?.let { AmadeusVoice.entries[it] } ?: AmadeusVoice.soft
-    val window = enumOf(str("window"), AmadeusWindow.entries.toTypedArray())
-      .takeIf { it >= 0 }?.let { AmadeusWindow.entries[it] } ?: AmadeusWindow.none
-    return AmadeusTag(mood, sprite, voice, window, str("windowId"), str("windowTitle"))
+    val sprite = runCatching { AmadeusSprite.valueOf(str("sprite").ifEmpty { "normal" }) }
+      .getOrDefault(AmadeusSprite.normal)
+    val voice = runCatching { AmadeusVoice.valueOf(str("voice").ifEmpty { "soft" }) }.getOrDefault(AmadeusVoice.soft)
+    val window = runCatching { AmadeusWindow.valueOf(str("window").ifEmpty { "none" }) }.getOrDefault(AmadeusWindow.none)
+    return AmadeusTag(sprite, voice, window, str("windowId"), str("windowTitle"))
   }
 }

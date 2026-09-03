@@ -73,7 +73,7 @@ fun SettingsOverlay(
   Column(
     modifier = Modifier
       .fillMaxWidth()
-      .fillMaxHeight(0.62f)
+      .fillMaxHeight()
       .background(colors.sheetBackground, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
   ) {
     // 顶部深蓝横幅（maid-atelier settings-frame，CC BY-NC-SA 4.0）

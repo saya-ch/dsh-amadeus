@@ -8,11 +8,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** 记录中的一条发言：谁 + 内容（鲸鱼娘话 / 用户发言）。 */
+data class ChatLine(val speaker: ChatSpeaker, val text: String) {
+  enum class ChatSpeaker { WHALE, USER }
+}
+
 /** 日志条目：演出段 或 幕后活动（架构 3.9，append-only）。 */
 sealed class LogEntry {
   data class DialogueEntry(val dialogue: Dialogue) : LogEntry()
   data class ActivityEntry(val activity: Activity) : LogEntry()
   data class ChoiceEntry(val choice: Choice) : LogEntry()
+  data class UserEntry(val text: String) : LogEntry()
 }
 
 /**
@@ -30,14 +36,29 @@ class SessionLog {
       is StreamEvent.ChoiceEvent -> LogEntry.ChoiceEntry(event.choice)
       is StreamEvent.ApprovalEvent -> return // 审批不是日志条目
       is StreamEvent.Ended -> return // 结束不是日志条目
+      is StreamEvent.TurnEnded -> return // 回合结束是 UI 信号，不是日志条目
     }
     _entries.value = _entries.value + entry
   }
 
   fun appendAll(events: List<StreamEvent>) = events.forEach { append(it) }
 
+  /** 追加用户发言（真实模式发送时）。 */
+  fun appendUser(text: String) {
+    _entries.value = _entries.value + LogEntry.UserEntry(text)
+  }
+
   /** 演出文本（对话记录侧栏，产品 1.9：只显示参加演出的对话）。 */
   fun dialogueEntries(): List<Dialogue> = _entries.value.filterIsInstance<LogEntry.DialogueEntry>().map { it.dialogue }
+
+  /** 聊天记录（鲸鱼娘话 + 用户发言，按序）。 */
+  fun chatLines(): List<ChatLine> = _entries.value.mapNotNull { e ->
+    when (e) {
+      is LogEntry.DialogueEntry -> ChatLine(ChatLine.ChatSpeaker.WHALE, e.dialogue.text)
+      is LogEntry.UserEntry -> ChatLine(ChatLine.ChatSpeaker.USER, e.text)
+      else -> null
+    }
+  }
 
   /** 全量（事件流侧栏）。 */
   fun allEntries(): List<LogEntry> = _entries.value
@@ -86,6 +107,10 @@ class SessionStateMachine(private val log: SessionLog) {
         // 审批不改演出状态（UI 覆盖层处理）
       }
       is StreamEvent.Ended -> _state.value = _state.value.copy(
+        phase = SessionPhase.IDLE,
+        typing = false,
+      )
+      is StreamEvent.TurnEnded -> _state.value = _state.value.copy(
         phase = SessionPhase.IDLE,
         typing = false,
       )

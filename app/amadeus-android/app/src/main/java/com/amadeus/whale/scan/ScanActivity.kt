@@ -78,6 +78,8 @@ private fun ScanScreen(onCancel: () -> Unit, onScanned: (String) -> Unit) {
   Box(modifier = Modifier.fillMaxSize()) {
     if (permissionGranted) {
       CameraPreview(onScanned = onScanned)
+      // 取景框：周边压暗 + 中央方框四角（扫码引导）
+      QrViewfinder()
     } else {
       Text("需要相机权限来扫码配对", modifier = Modifier.align(Alignment.Center))
     }
@@ -91,6 +93,39 @@ private fun ScanScreen(onCancel: () -> Unit, onScanned: (String) -> Unit) {
       fontSize = 16.sp,
       modifier = Modifier.align(Alignment.TopCenter).padding(16.dp),
     )
+  }
+}
+
+@Composable
+private fun QrViewfinder() {
+  val dark = androidx.compose.ui.graphics.Color(0x99000000)
+  val accent = androidx.compose.ui.graphics.Color(0xFFE8C36A) // 金线（与主题一致）
+  val cornerLen = 28.dp
+  val stroke = 3.dp
+  androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+    val size = this.size.minDimension * 0.7f // 方框边长 = 屏短边 70%
+    val left = (this.size.width - size) / 2f
+    val top = (this.size.height - size) / 2f - (this.size.height * 0.05f)
+    val right = left + size
+    val bottom = top + size
+    val cl = cornerLen.toPx()
+    val sw = stroke.toPx()
+    // 周边压暗（四个矩形）
+    drawRect(dark, topLeft = androidx.compose.ui.geometry.Offset(0f, 0f), size = androidx.compose.ui.geometry.Size(this.size.width, top))
+    drawRect(dark, topLeft = androidx.compose.ui.geometry.Offset(0f, bottom), size = androidx.compose.ui.geometry.Size(this.size.width, this.size.height - bottom))
+    drawRect(dark, topLeft = androidx.compose.ui.geometry.Offset(0f, top), size = androidx.compose.ui.geometry.Size(left, size))
+    drawRect(dark, topLeft = androidx.compose.ui.geometry.Offset(right, top), size = androidx.compose.ui.geometry.Size(this.size.width - right, size))
+    // 四角 L 线
+    val path = androidx.compose.ui.graphics.Path()
+    // 左上
+    path.moveTo(left, top + cl); path.lineTo(left, top); path.lineTo(left + cl, top)
+    // 右上
+    path.moveTo(right - cl, top); path.lineTo(right, top); path.lineTo(right, top + cl)
+    // 右下
+    path.moveTo(right, bottom - cl); path.lineTo(right, bottom); path.lineTo(right - cl, bottom)
+    // 左下
+    path.moveTo(left + cl, bottom); path.lineTo(left, bottom); path.lineTo(left, bottom - cl)
+    drawPath(path, color = accent, style = androidx.compose.ui.graphics.drawscope.Stroke(width = sw))
   }
 }
 

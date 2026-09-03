@@ -1,10 +1,7 @@
 package com.amadeus.whale.domain.model
 
-/** mood（立绘心情），产品 1.5 标签协议。 */
-enum class AmadeusMood { shy, think, tool, happy, sad, idle }
-
-/** sprite（立绘形象），产品 1.5 标签协议。 */
-enum class AmadeusSprite { shy, think, tool, wag, gray, smile, talk }
+/** sprite（立绘形象），AMW 标签协议（产品 1.5）。当前 AMW 仅携带 sprite 字段。 */
+enum class AmadeusSprite { excited, happy, shy, thinking, exclaim, pout, deadpan, flustered, normal }
 
 /** voice（仅元数据，本期不播放，产品 1.11 预留）。 */
 enum class AmadeusVoice { whisper, soft, excited }
@@ -12,10 +9,9 @@ enum class AmadeusVoice { whisper, soft, excited }
 /** window 类型（产品 1.9）。 */
 enum class AmadeusWindow { none, report, preview, choice }
 
-/** 一组标签（架构 3.8：一个 message = 一组标签，段尾）。 */
+/** 一组标签（架构 3.8：一个 message = 一组标签，段尾）。AMW 协议当前只消费 sprite。 */
 data class AmadeusTag(
-  val mood: AmadeusMood = AmadeusMood.idle,
-  val sprite: AmadeusSprite = AmadeusSprite.smile,
+  val sprite: AmadeusSprite = AmadeusSprite.normal,
   val voice: AmadeusVoice = AmadeusVoice.soft,
   val window: AmadeusWindow = AmadeusWindow.none,
   val windowId: String = "",
@@ -26,6 +22,8 @@ data class AmadeusTag(
 data class Dialogue(
   val text: String,
   val tag: AmadeusTag,
+  /** 回合工作中说的话（旁白）→ 句末带工作动画；最终回答/历史 = false。 */
+  val working: Boolean = false,
 )
 
 /** 幕后活动（思考/工具/step），喂事件流小窗（架构 3.19 activity 帧）。 */
@@ -58,6 +56,8 @@ sealed class StreamEvent {
   data class ChoiceEvent(val choice: Choice) : StreamEvent()
   data class ApprovalEvent(val approval: ApprovalRequest) : StreamEvent()
   data class Ended(val reason: String) : StreamEvent()
+  /** 回合结束（agent 停笔）：事件流渐隐清空、末句工作符号去除。 */
+  data class TurnEnded(val reason: String) : StreamEvent()
 }
 
 /** 会话（读档页用）。 */

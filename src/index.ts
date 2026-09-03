@@ -22,6 +22,6 @@ export {
 } from './managed-setup.js'
 export type { LanNetwork, ManagedSetup } from './managed-setup.js'
 export type {
-  AmadeusBgm, AmadeusMood, AmadeusSegment, AmadeusSfx,
+  AmadeusBgm, AmadeusSegment, AmadeusSfx,
   AmadeusSprite, AmadeusTag, AmadeusVoice, AmadeusWindow,
 } from './amadeus-tags.js'

@@ -47,7 +47,7 @@ interface ChoiceMeta {
 
 /** Structural surface of the DSH context the choices adapter consumes. */
 export interface AmadeusChoicesContext {
-  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown, options?: { global?: boolean }): unknown
+  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
   readonly logger?: { warn(message: string): void }
 }
 
@@ -149,6 +149,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
 
   /** Answer one user-questions/request; the app resolves it through the gateway. */
   async answerRequest(request: AmadeusUserQuestionRequest): Promise<AmadeusUserQuestionAnswer> {
+    console.error(`[amw-choice] answerRequest q=${(request.questions[0]?.question ?? '').slice(0, 30)} agent=${typeof request.agent === 'string' ? request.agent.slice(0, 8) : (request.agent as { id?: string })?.id?.slice(0, 8) ?? '?'}`)
     const question = request.questions[0]
     if (question === undefined) throw new Error('empty-questions')
     const choiceId = `cq_${randomBytes(4).toString('hex')}`
@@ -169,6 +170,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
     const sessionId = AmadeusChoicesAdapter.sessionIdOf(agent)
     const push = sessionId === undefined ? undefined : this.streams.get(sessionId)
     if (push !== undefined) {
+      console.error(`[amw-choice] push session=${String(sessionId).slice(0, 8)} q=${question.question.slice(0, 20)}`)
       push({
         type: 'choice',
         choiceId,
@@ -180,6 +182,7 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
       })
       return
     }
+    console.error(`[amw-choice] NO-STREAM session=${String(sessionId).slice(0, 8)}; choice ${choiceId} pending`)
     this.ctx.logger?.warn(`no stream registered for session ${sessionId ?? 'unknown'}; choice ${choiceId} remains pending`)
   }
 
@@ -197,9 +200,11 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
 
   /** Register the ask_user_question answerer on the `user-questions/request` waterfall. */
   install(): void {
+    // prepend: 抢占 first-wins slot——DSH web answerer 先注册且认识每个请求，
+    // 不 prepend 会被它吃掉（手机场景收不到提问，web 先弹窗挂起）。
     this.ctx.on('user-questions/request', (request: AmadeusUserQuestionRequest) => {
       return this.answerRequest(request)
-    }, { global: true })
+    }, { global: true, prepend: true })
   }
 
   private release(choiceId: string, pending: PendingChoice): void {

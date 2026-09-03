@@ -3,15 +3,13 @@
  * 支持多句分页：每句独立标签，window 扩展
  */
 
-export type AmadeusMood = 'shy' | 'think' | 'tool' | 'happy' | 'sad' | 'idle'
-export type AmadeusSprite = 'shy' | 'think' | 'tool' | 'wag' | 'gray' | 'smile' | 'talk'
+export type AmadeusSprite = 'excited' | 'happy' | 'shy' | 'thinking' | 'exclaim' | 'pout' | 'deadpan' | 'flustered' | 'normal'
 export type AmadeusVoice = 'whisper' | 'soft' | 'excited'
 export type AmadeusSfx = 'wave' | 'bell' | 'none'
 export type AmadeusBgm = 'rain' | 'none'
 export type AmadeusWindow = 'none' | 'report' | 'preview' | 'choice'
 
 export interface AmadeusTag {
-  readonly mood: AmadeusMood
   readonly sprite: AmadeusSprite
   readonly voice: AmadeusVoice
   readonly sfx: AmadeusSfx
@@ -24,8 +22,7 @@ export interface AmadeusTag {
   readonly options?: readonly string[]
 }
 
-const VALID_MOODS = new Set<string>(['shy','think','tool','happy','sad','idle'])
-const VALID_SPRITES = new Set<string>(['shy','think','tool','wag','gray','smile','talk'])
+const VALID_SPRITES = new Set<string>(['excited','happy','shy','thinking','exclaim','pout','deadpan','flustered','normal'])
 const VALID_VOICES = new Set<string>(['whisper','soft','excited'])
 const VALID_SFX = new Set<string>(['wave','bell','none'])
 const VALID_BGM = new Set<string>(['rain','none'])
@@ -46,19 +43,20 @@ export function parseAmadeusTag(text: string): { clean: string, tag: AmadeusTag 
   if (!m) return { clean: text, tag: null }
   try {
     const raw = JSON.parse(m[1]!) as Record<string, unknown>
-    if (!VALID_MOODS.has(String(raw.mood)) || !VALID_SPRITES.has(String(raw.sprite)) ||
-        !VALID_VOICES.has(String(raw.voice)) || !VALID_SFX.has(String(raw.sfx)) || !VALID_BGM.has(String(raw.bgm))) {
+    if (!VALID_SPRITES.has(String(raw.sprite))) {
       return { clean: text.slice(0, m.index).trimEnd(), tag: null }
     }
+    const voice = VALID_VOICES.has(String(raw.voice)) ? raw.voice as AmadeusVoice : 'soft'
+    const sfx = VALID_SFX.has(String(raw.sfx)) ? raw.sfx as AmadeusSfx : 'none'
+    const bgm = VALID_BGM.has(String(raw.bgm)) ? raw.bgm as AmadeusBgm : 'none'
     if (raw.window !== undefined && !VALID_WINDOW.has(String(raw.window))) {
       return { clean: text.slice(0, m.index).trimEnd(), tag: null }
     }
     const tag: AmadeusTag = {
-      mood: raw.mood as AmadeusMood,
       sprite: raw.sprite as AmadeusSprite,
-      voice: raw.voice as AmadeusVoice,
-      sfx: raw.sfx as AmadeusSfx,
-      bgm: raw.bgm as AmadeusBgm,
+      voice,
+      sfx,
+      bgm,
       ...(raw.window === undefined ? {} : { window: raw.window as AmadeusWindow }),
       ...(typeof raw.windowId === 'string' ? { windowId: raw.windowId } : {}),
       ...(typeof raw.windowTitle === 'string' ? { windowTitle: raw.windowTitle } : {}),
@@ -112,16 +110,17 @@ export function stripAllTags(text: string): string {
   return parseAmadeusSegments(text).map(s => s.clean).join('\n')
 }
 
-export function ensureAmadeusTag(text: string, fallback: AmadeusTag = { mood: 'idle', sprite: 'smile', voice: 'soft', sfx: 'none', bgm: 'none' }): string {
+export function ensureAmadeusTag(text: string, fallback: AmadeusTag = { sprite: 'normal', voice: 'soft', sfx: 'none', bgm: 'none' }): string {
   const { clean, tag } = parseAmadeusTag(text)
   if (tag) return text
-  let mood: AmadeusMood = fallback.mood
   let sprite: AmadeusSprite = fallback.sprite
-  if (/思考|正在|稍等|让我/.test(clean)) { mood = 'think'; sprite = 'think' }
-  else if (/工具|执行|调用|处理/.test(clean)) { mood = 'tool'; sprite = 'tool' }
-  else if (/开心|好耶|成功|完成/.test(clean)) { mood = 'happy'; sprite = 'wag' }
-  else if (/抱歉|失败|难过|呜/.test(clean)) { mood = 'sad'; sprite = 'gray' }
-  const tag2: AmadeusTag = { ...fallback, mood, sprite }
+  if (/思考|正在|稍等|让我|想想|看看/.test(clean)) sprite = 'thinking'
+  else if (/工具|执行|调用|处理|完成/.test(clean)) sprite = 'exclaim'
+  else if (/开心|好耶|成功|哇|宝藏|发现|惊喜|喜欢/.test(clean)) sprite = 'excited'
+  else if (/抱歉|失败|难过|呜|哭了/.test(clean)) sprite = 'flustered'
+  else if (/哼|才不|讨厌|生气/.test(clean)) sprite = 'pout'
+  else if (/唉|算了|无语|随便/.test(clean)) sprite = 'deadpan'
+  const tag2: AmadeusTag = { ...fallback, sprite }
   return `${clean}\n[[AMW:${JSON.stringify(tag2)}]]`
 }
 

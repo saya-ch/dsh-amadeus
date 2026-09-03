@@ -71,6 +71,9 @@ export function truncateForDialogue(text: string): string {
 export class AmadeusStreamHub {
   constructor(private readonly ctx: AmadeusStreamContext) {}
 
+  /** 最近一次幕后活动（工具/步骤）时间戳：无标签对话据此推断“干活中”表情。 */
+  private recentWorkAt = 0
+
   async open(sessionId: string, write: (data: string) => void, onFinished?: () => void): Promise<() => void> {
     let closed = false
     let finished = false
@@ -101,10 +104,18 @@ export class AmadeusStreamHub {
           } else if (event.type === 'session/end') {
             finish(ENDED_REASON_SESSION)
             break
+          } else if (event.type === 'turn/end') {
+            // 回合结束信号：App 据此清空事件流（浮字渐隐）并去掉末句工作符号
+            const data = event.data as Record<string, unknown> | undefined
+            const reason = data?.reason as Record<string, unknown> | undefined
+            write(JSON.stringify({ type: 'turn', status: 'end', reason: String(reason?.kind ?? data?.reason ?? '') }))
           } else {
             // 幕后事件（思考/工具/step/turn 等）→ activity 帧（产品 1.5.1/3.19）
             const activity = this.toActivity(event)
-            if (activity !== null) write(JSON.stringify(activity))
+            if (activity !== null) {
+              this.recentWorkAt = Date.now()
+              write(JSON.stringify(activity))
+            }
           }
         }
       } catch {
@@ -186,11 +197,13 @@ export class AmadeusStreamHub {
         type: 'dialogue',
         text: truncated,
         tag: this.tagOrFallback(tag),
+        working: Date.now() - this.recentWorkAt < 12_000,
       }))
       write(JSON.stringify({
         type: 'dialogue',
         text: '详细内容我放进小窗口里啦 啾~',
         tag: this.tagWithWindow(tag, 'report', reportId, '长文本内容'),
+        working: false,
       }))
       return
     }
@@ -198,11 +211,19 @@ export class AmadeusStreamHub {
       type: 'dialogue',
       text: clean,
       tag: this.tagOrFallback(tag),
+      // 回合工作中：刚有工具/步骤活动时说的话 = 任务中的旁白（句末带工作符号）；
+      // 无活动的单答 = 最终回答（不带符号）。
+      working: Date.now() - this.recentWorkAt < 12_000,
     }))
   }
 
   private tagOrFallback(tag: AmadeusTag | null): Record<string, unknown> {
-    return tag === null ? { mood: 'idle', sprite: 'smile', voice: 'soft', sfx: 'none', bgm: 'none' } : { ...tag }
+    if (tag !== null) return { ...tag }
+    // 无标签文本：刚有工具/步骤活动 → 干活中的专注脸（thinking）；否则 normal
+    if (Date.now() - this.recentWorkAt < 12_000) {
+      return { sprite: 'thinking', voice: 'soft', sfx: 'none', bgm: 'none' }
+    }
+    return { sprite: 'normal', voice: 'soft', sfx: 'none', bgm: 'none' }
   }
 
   private tagWithWindow(tag: AmadeusTag | null, window: string, windowId: string, windowTitle: string): Record<string, unknown> {

@@ -1,7 +1,8 @@
 package com.amadeus.whale.data
 
+import com.amadeus.whale.domain.DirectoryListingView
 import com.amadeus.whale.domain.SessionRepository
-import com.amadeus.whale.domain.model.AmadeusMood
+import com.amadeus.whale.domain.WorkspaceView
 import com.amadeus.whale.domain.model.AmadeusSession
 import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.domain.model.AmadeusTag
@@ -66,6 +67,69 @@ class HttpSessionRepository(
     }
   }
 
+  override suspend fun listWorkspaces(): List<WorkspaceView> = withContext(Dispatchers.IO) {
+    val res = client.newCall(Request.Builder().url("$routes/workspaces").get().build()).execute()
+    res.use {
+      if (!it.isSuccessful) return@withContext emptyList()
+      val body = it.body?.string() ?: return@withContext emptyList()
+      val arr = (json.parseToJsonElement(body) as? JsonObject)?.get("workspaces") as? JsonArray ?: return@withContext emptyList()
+      arr.mapNotNull { w ->
+        val wo = w as? JsonObject ?: return@mapNotNull null
+        WorkspaceView(
+          id = (wo["id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null,
+          path = (wo["path"] as? JsonPrimitive)?.contentOrNull ?: "",
+          title = (wo["title"] as? JsonPrimitive)?.contentOrNull ?: "",
+        )
+      }
+    }
+  }
+
+  override suspend fun browseDirectory(path: String?): DirectoryListingView = withContext(Dispatchers.IO) {
+    val url = "$routes/workspaces/browse" + (path?.let { "?path=${java.net.URLEncoder.encode(it, "UTF-8")}" } ?: "")
+    val res = client.newCall(Request.Builder().url(url).get().build()).execute()
+    res.use {
+      val body = it.body?.string() ?: return@withContext DirectoryListingView("", "", emptyList(), emptyList())
+      if (!it.isSuccessful) return@withContext DirectoryListingView("", "", emptyList(), emptyList())
+      val obj = (json.parseToJsonElement(body) as? JsonObject)?.get("listing") as? JsonObject ?: return@withContext DirectoryListingView("", "", emptyList(), emptyList())
+      val crumbs = (obj["crumbs"] as? JsonArray)?.mapNotNull { c ->
+        val co = c as? JsonObject ?: return@mapNotNull null
+        Pair((co["name"] as? JsonPrimitive)?.contentOrNull ?: "", (co["path"] as? JsonPrimitive)?.contentOrNull ?: "")
+      } ?: emptyList()
+      val entries = (obj["entries"] as? JsonArray)?.mapNotNull { e ->
+        val eo = e as? JsonObject ?: return@mapNotNull null
+        Triple(
+          (eo["name"] as? JsonPrimitive)?.contentOrNull ?: "",
+          (eo["path"] as? JsonPrimitive)?.contentOrNull ?: "",
+          (eo["hidden"] as? JsonPrimitive)?.contentOrNull?.toBoolean() ?: false,
+        )
+      } ?: emptyList()
+      DirectoryListingView(
+        path = (obj["path"] as? JsonPrimitive)?.contentOrNull ?: "",
+        home = (obj["home"] as? JsonPrimitive)?.contentOrNull ?: "",
+        crumbs = crumbs,
+        entries = entries,
+      )
+    }
+  }
+
+  override suspend fun registerWorkspace(path: String): WorkspaceView = withContext(Dispatchers.IO) {
+    val body = buildString { append("{\"path\":\"").append(path.replace("\\", "\\\\").replace("\"", "\\\"")).append("\"}") }
+    val res = client.newCall(
+      Request.Builder().url("$routes/workspaces/register")
+        .post(body.toRequestBody(JSON_MEDIA_TYPE)).build(),
+    ).execute()
+    res.use {
+      if (!it.isSuccessful) error("register workspace failed: ${it.code}")
+      val b = it.body?.string() ?: error("empty body")
+      val w = ((json.parseToJsonElement(b) as? JsonObject)?.get("workspace") as? JsonObject) ?: error("bad register response")
+      WorkspaceView(
+        id = (w["id"] as? JsonPrimitive)?.contentOrNull ?: error("no id"),
+        path = (w["path"] as? JsonPrimitive)?.contentOrNull ?: "",
+        title = (w["title"] as? JsonPrimitive)?.contentOrNull ?: "",
+      )
+    }
+  }
+
   override suspend fun rename(sessionId: String, title: String) = withContext(Dispatchers.IO) {
     val body = """{"title":${jsonString(title)}}"""
     client.newCall(Request.Builder().url("$routes/sessions/$sessionId")
@@ -101,11 +165,20 @@ class HttpSessionRepository(
   override fun openStream(sessionId: String, onEvent: (StreamEvent) -> Unit): AutoCloseable {
     val req = Request.Builder().url("$routes/stream/$sessionId").get().build()
     val factory = EventSources.createFactory(client)
+    android.util.Log.d("AMW", "stream: open $sessionId")
     val source = factory.newEventSource(req, object : EventSourceListener() {
+      override fun onOpen(eventSource: EventSource, response: Response) {
+        android.util.Log.d("AMW", "stream: opened code=${response.code}")
+      }
       override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
+        android.util.Log.d("AMW", "stream: event data=${data.take(80)}")
         StreamEventParser.parse(data)?.let(onEvent)
       }
+      override fun onClosed(eventSource: EventSource) {
+        android.util.Log.d("AMW", "stream: closed")
+      }
       override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+        android.util.Log.d("AMW", "stream: failure ${t?.message} code=${response?.code}")
         onEvent(StreamEvent.Ended(t?.message ?: "stream_failure"))
       }
     })
@@ -183,8 +256,7 @@ class HttpSessionRepository(
     return runCatching {
       val obj = json.parseToJsonElement(m.groupValues[1]).jsonObject
       AmadeusTag(
-        mood = runCatching { AmadeusMood.valueOf((obj["mood"] as? JsonPrimitive)?.content ?: "idle") }.getOrDefault(AmadeusMood.idle),
-        sprite = runCatching { AmadeusSprite.valueOf((obj["sprite"] as? JsonPrimitive)?.content ?: "smile") }.getOrDefault(AmadeusSprite.smile),
+        sprite = runCatching { AmadeusSprite.valueOf((obj["sprite"] as? JsonPrimitive)?.content ?: "normal") }.getOrDefault(AmadeusSprite.normal),
         voice = runCatching { AmadeusVoice.valueOf((obj["voice"] as? JsonPrimitive)?.content ?: "soft") }.getOrDefault(AmadeusVoice.soft),
         window = runCatching { AmadeusWindow.valueOf((obj["window"] as? JsonPrimitive)?.content ?: "none") }.getOrDefault(AmadeusWindow.none),
         windowId = (obj["windowId"] as? JsonPrimitive)?.content ?: "",

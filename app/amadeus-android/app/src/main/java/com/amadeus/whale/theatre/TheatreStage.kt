@@ -7,29 +7,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
-import com.amadeus.whale.domain.model.AmadeusMood
 import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.theme.AmadeusCrossfade
 
-/** 立绘映射：sprite → assets 文件（产品 1.6）。 */
+/** 立绘映射：sprite → assets 文件（产品 1.6；AMW 只含 sprite）。 */
 fun spriteAsset(sprite: AmadeusSprite): String = when (sprite) {
+  AmadeusSprite.excited -> "whale-excited.webp"
+  AmadeusSprite.happy -> "whale-cheerful.webp"
   AmadeusSprite.shy -> "whale-shy.webp"
-  AmadeusSprite.think -> "whale-confused.webp"
-  AmadeusSprite.tool -> "whale-serious.webp"
-  AmadeusSprite.wag -> "whale-cheerful.webp"
-  AmadeusSprite.gray -> "whale-frightened.webp"
-  AmadeusSprite.smile -> "whale-starry.webp"
-  AmadeusSprite.talk -> "maid-left.webp"
+  AmadeusSprite.thinking -> "whale-confused.webp"
+  AmadeusSprite.exclaim -> "whale-exclaim.webp"
+  AmadeusSprite.pout -> "whale-pout.webp"
+  AmadeusSprite.deadpan -> "whale-deadpan.webp"
+  AmadeusSprite.flustered -> "whale-flustered.webp"
+  AmadeusSprite.normal -> "maid-normal.webp"
 }
 
 /**
  * 剧场舞台（架构 3.11）：背景 + 立绘，自然过渡（3.3 AmadeusCrossfade）。
- * 背景静态、立绘静态 + 切换 Crossfade（产品 1.6/1.7）。
+ * 背景静态（调用方传用户所选）、立绘静态 + 切换 Crossfade（产品 1.6/1.7）。
  */
 @Composable
 fun TheatreStage(
   background: String,
-  mood: AmadeusMood,
   sprite: AmadeusSprite,
   modifier: Modifier = Modifier,
 ) {

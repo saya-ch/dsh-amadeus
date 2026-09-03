@@ -27,6 +27,7 @@ data class DevicePrefs(
   val textSpeed: Int = 1,             // 0=慢 1=中 2=快
   val toolProgress: Boolean = true,
   val hapticsEnabled: Boolean = true,
+  val lastSessionId: String? = null,
 )
 
 class DevicePrefsStore(private val context: Context) {
@@ -41,6 +42,7 @@ class DevicePrefsStore(private val context: Context) {
     val textSpeed = intPreferencesKey("text_speed")
     val toolProgress = booleanPreferencesKey("tool_progress")
     val hapticsEnabled = booleanPreferencesKey("haptics_enabled")
+    val lastSessionId = stringPreferencesKey("last_session_id")
   }
 
   val flow: Flow<DevicePrefs> = context.amadeusDataStore.data.map { p ->
@@ -55,6 +57,7 @@ class DevicePrefsStore(private val context: Context) {
       textSpeed = p[Keys.textSpeed] ?: 1,
       toolProgress = p[Keys.toolProgress] ?: true,
       hapticsEnabled = p[Keys.hapticsEnabled] ?: true,
+      lastSessionId = p[Keys.lastSessionId],
     )
   }
 
@@ -70,6 +73,7 @@ class DevicePrefsStore(private val context: Context) {
   suspend fun setTextSpeed(v: Int) = edit { it[Keys.textSpeed] = v.coerceIn(0, 2) }
   suspend fun setToolProgress(v: Boolean) = edit { it[Keys.toolProgress] = v }
   suspend fun setHapticsEnabled(v: Boolean) = edit { it[Keys.hapticsEnabled] = v }
+  suspend fun setLastSessionId(v: String) = edit { it[Keys.lastSessionId] = v }
 
   private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
     context.amadeusDataStore.edit { block(it) }

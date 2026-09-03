@@ -101,11 +101,11 @@ describe('choices adapter', () => {
     await expect(pending).rejects.toThrow(AskUserQuestionAbortedError)
   })
 
-  it('registers the answerer with { global: true } so agent-scoped dispatches still reach it', async () => {
+  it('registers the answerer prepended with { global: true } so it beats the web UI answerer', async () => {
     const { registeredOptions, ctx } = recordingCtx()
     const a = new AmadeusChoicesAdapter(ctx, dir)
     a.install()
-    expect(registeredOptions).toEqual([{ global: true }])
+    expect(registeredOptions).toEqual([{ global: true, prepend: true }])
   })
 
   it('pushes a choice frame to the stream registered for the request agent session', async () => {

@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { AmadeusSessionsAdapter, AmadeusSessionCommands } from '../src/amadeus-sessions.js'
 import { AMADEUS_OPENING_PROMPT, bridgeAmadeusChoicesToStream, createAmadeusOpeningSession } from '../src/amadeus-plugin.js'
 
+/** 最小注册表 fake（本文件只测 opening 流程，注册表不参与断言）。 */
+function reg() {
+  return {
+    isChecked: async () => 'unknown' as const,
+    record: async () => {},
+    unmark: async () => {},
+  }
+}
+
 function fakeCtx(calls?: string[]) {
   const sessions = new Map<string, any>([['s1', { id: 's1', agentPreset: 'amadeus' }]])
   return {
@@ -25,8 +34,8 @@ function fakeCtx(calls?: string[]) {
 describe('opening prompt (方案 A)', () => {
   it('creates then immediately prompts an opening line', async () => {
     const calls: string[] = []
-    const adapter = new AmadeusSessionsAdapter(fakeCtx(calls) as any)
-    const commands = new AmadeusSessionCommands(fakeCtx(calls) as any)
+    const adapter = new AmadeusSessionsAdapter(fakeCtx(calls) as any, reg())
+    const commands = new AmadeusSessionCommands(fakeCtx(calls) as any, reg())
     const created = await createAmadeusOpeningSession(adapter, commands, 'amadeus')
     expect(created.id).toBe('s1')
     expect(calls).toEqual(['create', 'prompt'])
@@ -36,8 +45,8 @@ describe('opening prompt (方案 A)', () => {
     let received: string | undefined
     const ctx: any = fakeCtx()
     ctx.sessionController.prompt = async (req: any) => { received = req.content[0].text; return { accepted: true } }
-    const adapter = new AmadeusSessionsAdapter(ctx)
-    const commands = new AmadeusSessionCommands(ctx)
+    const adapter = new AmadeusSessionsAdapter(ctx, reg())
+    const commands = new AmadeusSessionCommands(ctx, reg())
     await createAmadeusOpeningSession(adapter, commands, 'amadeus')
     expect(received).toBe('你刚在月夜礁石边遇见用户，打个招呼吧，说一句温柔的话')
     expect(received).toBe(AMADEUS_OPENING_PROMPT)
@@ -47,8 +56,8 @@ describe('opening prompt (方案 A)', () => {
     const ctx: any = fakeCtx()
     const createReq: any = {}
     ctx.sessionController.create = async (req: any) => { Object.assign(createReq, req); return { sessionId: 's1' } }
-    const adapter = new AmadeusSessionsAdapter(ctx)
-    const commands = new AmadeusSessionCommands(ctx)
+    const adapter = new AmadeusSessionsAdapter(ctx, reg())
+    const commands = new AmadeusSessionCommands(ctx, reg())
     await createAmadeusOpeningSession(adapter, commands, 'amadeus', '标题', 'w1')
     expect(createReq).toEqual({ agentPreset: 'amadeus', workspaceId: 'w1' })
   })

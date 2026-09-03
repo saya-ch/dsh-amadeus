@@ -6,9 +6,10 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { MobileAccessGateway } from './gateway.js'
 import { createMobileAccessService } from './extensions.js'
-import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSessionSummary } from './amadeus-extension.js'
+import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSessionSummary, AmadeusRequestError } from './amadeus-extension.js'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
 import { AmadeusSessionCommands, AmadeusSessionsAdapter, type AmadeusSessionsContext } from './amadeus-sessions.js'
+import { AmadeusSessionRegistry, amadeusSessionRegistryFile } from './amadeus-session-registry.js'
 import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js'
 import { AmadeusApprovalAdapter, type AmadeusApprovalContext } from './amadeus-approval.js'
 import { AmadeusChoicesAdapter, type AmadeusChoicesContext } from './amadeus-choices.js'
@@ -277,9 +278,12 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
 
   // Real business adapters over the DSH Cordis services injected by the host.
   const stateDir = amadeusStateDir()
+  const sessionRegistry = new AmadeusSessionRegistry(amadeusSessionRegistryFile(stateDir))
   const sessionsContext = {
     ...(ctx as object),
     modeId: AMADEUS_MODE_ID,
+    // 默认 Amadeus 工作区目录：会话未选工作区时创建于此（dsh 3080 可见）
+    defaultWorkspaceDir: join(amadeusStateDir(), 'workspace'),
   } as unknown as AmadeusSessionsContext
   // DSH services resolve lazily through Cordis `ctx.get`; a spread snapshot at
   // apply-time may hold a stale/absent reference. Rebind the service accessors
@@ -303,8 +307,8 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     enumerable: false,
     configurable: true,
   })
-  const sessionsAdapter = new AmadeusSessionsAdapter(sessionsContext)
-  const sessionCommands = new AmadeusSessionCommands(sessionsContext)
+  const sessionsAdapter = new AmadeusSessionsAdapter(sessionsContext, sessionRegistry)
+  const sessionCommands = new AmadeusSessionCommands(sessionsContext, sessionRegistry)
   const reportsAdapter = new AmadeusReportsAdapter(ctx, stateDir)
   const previewStore = new AmadeusPreviewStore(stateDir)
   const choicesAdapter = new AmadeusChoicesAdapter(ctx as unknown as AmadeusChoicesContext, stateDir)
@@ -317,8 +321,9 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
 
   const business: AmadeusGatewayOptions = {
     sessions: {
-      list: mode => sessionsAdapter.list(mode),
-      create: (mode, title, workspaceId) => createAmadeusOpeningSession(sessionsAdapter, sessionCommands, mode, title, workspaceId),
+      list: async mode => sessionsAdapter.list(mode),
+      // 新建会话不发开场消息：App 默认演出（空对话等待，用户说话才回应）
+      create: (mode, title, workspaceId) => sessionsAdapter.create(mode, title, workspaceId),
       get: id => sessionsAdapter.get(id),
     },
     reports: reportsAdapter,
@@ -332,6 +337,28 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
           path: record.header.path ?? '',
           title: record.header.title ?? '',
         }))
+      },
+      browse: async (path) => {
+        // App 内目录浏览：dsh directoryPicker 的 browse 后端（directory-picker-mobile-host）
+        const picker = lookup('directoryPicker') as
+          | { capability(): { kind: 'browse'; list(path?: string, signal?: AbortSignal): Promise<{
+              path: string; home: string
+              crumbs: Array<{ name: string; path: string }>
+              entries: Array<{ name: string; path: string; hidden: boolean }>
+            }> } }
+          | undefined
+        if (picker === undefined) throw new AmadeusRequestError(503, 'amadeus_directory_picker_unavailable')
+        const capability = picker.capability()
+        if (capability.kind !== 'browse') throw new AmadeusRequestError(503, 'amadeus_directory_picker_unavailable')
+        return capability.list(path)
+      },
+      register: async (path) => {
+        const existing = await sessionsContext.workspaceRegistry.resolveByPath(path)
+        if (existing !== undefined) {
+          return { id: existing.id, path: existing.path, title: existing.title ?? '' }
+        }
+        const created = await sessionsContext.workspaceRegistry.create(path)
+        return { id: created.id, path: created.path, title: created.title ?? '' }
       },
     },
     previews: previewStore,
