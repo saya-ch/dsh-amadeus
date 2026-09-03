@@ -2,7 +2,7 @@
   "name": "dsh-amadeus",
   "version": "0.1.0",
   "private": false,
-  "description": "Amadeus: Whale — DSH 高权限 Galgame Mode amadeus + 独立移动端 APP，复用 dsh-mobile 的安全连接层",
+  "description": "Amadeus — DSH 高权限 Galgame Mode amadeus + 独立移动端 APP，复用 dsh-mobile 的安全连接层",
   "type": "module",
   "main": "./lib/index.mjs",
   "types": "./lib/index.d.mts",

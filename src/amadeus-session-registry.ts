@@ -51,11 +51,15 @@ export class AmadeusSessionRegistry implements AmadeusSessionRegistryLike {
     }
   }
 
-  /** 会话是否已判定过（无论是否 Amadeus）——命中则不必再读 surface。 */
+  /** 会话是否已判定过（无论是否 Amadeus）——命中则不必再读 surface。
+   *  negative 判定超过一天即视为过期（dsh 会话可能后来切成 amadeus 人设），返回 unknown 让 list 重查。 */
   async isChecked(sessionId: string): Promise<'amadeus' | 'not-amadeus' | 'unknown'> {
     const file = await this.load()
     if (file.sessions[sessionId] !== undefined) return 'amadeus'
-    if (file.negatives[sessionId] !== undefined) return 'not-amadeus'
+    const negative = file.negatives[sessionId]
+    if (negative !== undefined) {
+      return Date.now() - negative.checkedAt < 86_400_000 ? 'not-amadeus' : 'unknown'
+    }
     return 'unknown'
   }
 

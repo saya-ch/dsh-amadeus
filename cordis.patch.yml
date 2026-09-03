@@ -1,4 +1,4 @@
-# Amadeus: Whale — fully independent plugin. Own gateway, own port, own files.
+# Amadeus — fully independent plugin. Own gateway, own port, own files.
 - insert:
     - id: amadeus
       name: dsh-amadeus

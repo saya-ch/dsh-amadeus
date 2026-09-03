@@ -50,7 +50,7 @@ fun TitleScreen(
         )
       }
       Text(
-        text = "Amadeus: Whale",
+        text = "Amadeus",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         color = colors.primaryText,

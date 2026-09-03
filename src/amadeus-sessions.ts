@@ -50,10 +50,6 @@ export class AmadeusSessionsAdapter implements NonNullable<AmadeusGatewayOptions
 
   async list(_mode: string): Promise<AmadeusSessionSummary[]> {
     const records = await this.ctx.sessionQuery.listSessions()
-    console.log(`[amw-sessions] listSessions returned ${records.length} records`)
-    if (records.length < 12) {
-      console.log('[amw-sessions] sample headers:', JSON.stringify(records.slice(0, 3).map(r => ({ id: r.header.id, preset: r.header.agentPreset, cwd: r.header.cwd }))))
-    }
     // 同 id 去重（dsh 可能因窗口/快照返回重复 record）
     const unique = records.filter((r, i, arr) => arr.findIndex(o => o.header.id === r.header.id) === i)
     // 归档会话（用户在 dsh 里隐藏的）不出现在读档——与 dsh web 可见性一致。
@@ -94,20 +90,7 @@ export class AmadeusSessionsAdapter implements NonNullable<AmadeusGatewayOptions
     const out: AmadeusSessionSummary[] = []
     for (const record of mine) {
       const raw = await this.ctx.sessionQuery.readTitle(record.header.id).catch(() => undefined)
-      // dsh readTitle 返回快照对象 { title } 或 undefined；这里只取字符串，取不到则为空
-      const title = typeof raw === 'string' ? raw : (raw?.title ?? '')
-      const cwd = record.header.cwd
-      const workspace = cwd === undefined || cwd.length === 0
-        ? undefined
-        : basename(cwd) // 工作区显示名 = cwd 目录名（与 dsh workspace 默认 title 一致）
-      out.push({
-        id: record.header.id,
-        title,
-        mode: this.ctx.modeId as typeof AMADEUS_MODE_ID,
-        ...(workspace === undefined ? {} : { workspace }),
-        // dsh header 无 updatedAt：用会话创建时间（session 事件 createdAt，稳定）做排序/显示时间
-        updatedAt: record.header.createdAt ?? record.header.updatedAt ?? Date.now(),
-      })
+      out.push(await this.summary(record, raw))
     }
     return out
   }
@@ -146,18 +129,30 @@ export class AmadeusSessionsAdapter implements NonNullable<AmadeusGatewayOptions
   async get(id: string): Promise<AmadeusSessionSummary | null> {
     const records = await this.ctx.sessionQuery.listSessions()
     const hit = records.find(r => r.header.id === id)
-    if (hit === undefined) return null
-    // 归属判定与 list 一致：header=amadeus 或注册表命中
-    const p = hit.header.agentPreset ?? '(none)'
-    const known = p === this.ctx.modeId
-      ? 'amadeus' as const
-      : await this.registry.isChecked(id).catch(() => 'unknown' as const)
-    if (known !== 'amadeus') return null
-    const raw = await this.ctx.sessionQuery.readTitle(id)
-    const title = typeof raw === 'string' ? raw : (raw?.title ?? '')
-    const cwd = hit.header.cwd
+    if (hit === undefined || !(await this.isAmadeus(hit.header))) return null
+    const raw = await this.ctx.sessionQuery.readTitle(id).catch(() => undefined)
+    return this.summary(hit, raw)
+  }
+
+  /** header preset 或注册表判定该会话是否鲸鱼娘会话。 */
+  private async isAmadeus(header: { id: string; agentPreset?: string }): Promise<boolean> {
+    const p = header.agentPreset ?? '(none)'
+    if (p === this.ctx.modeId) return true
+    return (await this.registry.isChecked(header.id).catch(() => 'unknown' as const)) === 'amadeus'
+  }
+
+  /** 组装对外 summary：标题取快照对象或字符串，工作区 = cwd 目录名，时间用创建（dsh 无 updatedAt）。 */
+  private async summary(record: { header: { id: string; cwd?: string; createdAt?: number; updatedAt?: number } }, raw: unknown): Promise<AmadeusSessionSummary> {
+    const title = typeof raw === 'string' ? raw : ((raw as { title?: string } | undefined)?.title ?? '')
+    const cwd = record.header.cwd
     const workspace = cwd === undefined || cwd.length === 0 ? undefined : basename(cwd)
-    return { id, title, mode: this.ctx.modeId as typeof AMADEUS_MODE_ID, ...(workspace === undefined ? {} : { workspace }), updatedAt: hit.header.createdAt ?? hit.header.updatedAt ?? Date.now() }
+    return {
+      id: record.header.id,
+      title,
+      mode: this.ctx.modeId as typeof AMADEUS_MODE_ID,
+      ...(workspace === undefined ? {} : { workspace }),
+      updatedAt: record.header.createdAt ?? record.header.updatedAt ?? Date.now(),
+    }
   }
 }
 

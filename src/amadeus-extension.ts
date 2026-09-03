@@ -153,7 +153,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
   return {
     schemaVersion: 1,
     id: AMADEUS_EXTENSION_ID,
-    name: 'Amadeus: Whale',
+    name: 'Amadeus',
     version: '0.1.0',
     description: 'Independent Amadeus business routes on the Amadeus gateway',
     routes: [
@@ -262,7 +262,7 @@ export function createAmadeusExtension(options: AmadeusGatewayOptions = {}): Mob
           if (hubClose !== undefined) void hubClose()
           if (!source.destroyed) source.push(null)
         }
-        const onAbort = (): void => { console.error(`[amw-stream] abort session=${sessionId.slice(0,8)} at=${Date.now()}`); endStream() }
+        const onAbort = (): void => endStream()
         request.signal.addEventListener('abort', onAbort, { once: true })
         push('retry: 2000\n')
         heartbeat = setInterval(() => push(': heartbeat\n\n'), 5_000)

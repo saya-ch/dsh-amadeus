@@ -1,6 +1,6 @@
-# Amadeus: Whale
+# Amadeus
 
-DSH 的 **Galgame Mode**：鲸鱼娘人格的 Agent 在电脑幕后真实执行工作，用户在手机上以剧场形式与她互动（打字机演出 + 立绘表情 + 报告/选项/历史小窗）。配套原生 Compose App「Amadeus Whale」。
+DSH 的 **Galgame Mode**：鲸鱼娘人格的 Agent 在电脑幕后真实执行工作，用户在手机上以剧场形式与她互动（打字机演出 + 立绘表情 + 报告/选项/历史小窗）。配套原生 Compose App「Amadeus」。
 
 > 叙事线：**demo** 讲用户与鲸鱼娘的相识（海边月夜初遇）；**真实会话**是用户与鲸鱼娘在一起的居家日常——每场独立、性格固定、不跨会话记忆。
 
@@ -12,7 +12,7 @@ DSH 的 **Galgame Mode**：鲸鱼娘人格的 Agent 在电脑幕后真实执行�
   ├─ dsh-amadeus 插件（Cordis）：接 agent 事件流 → 转 Galgame 帧
   └─ 安全网关（LAN 直连 :10486 或 cpolar 远程隧道，复用 dsh-mobile 安全层）
 
-[ 手机: Amadeus Whale App ]  原生 Compose（com.amadeus.whale）
+[ 手机: Amadeus App ]  原生 Compose（com.amadeus.whale）
   ├─ 标题画面 → demo（首次相识仪式）/ 连接页（扫码配对）
   ├─ 读档页（会话列表 = 存档位，按工作区分组，改名/删除/新建）
   └─ 剧场（全屏立绘 + 打字机对话框 + 事件流 + 四窗口：报告/预览/选项/历史）

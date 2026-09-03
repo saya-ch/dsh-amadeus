@@ -1,4 +1,4 @@
-# Amadeus: Whale 美术素材来源与许可
+# Amadeus 美术素材来源与许可
 
 本目录（`app/src/main/assets/amadeus/`）的全部美术素材来自 DSH 社区开源项目，均非本仓库原创。逐文件来源与许可如下。
 

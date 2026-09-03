@@ -1,5 +1,5 @@
 /**
- * Amadeus Whale — 桌面控制面板（设置页）。
+ * Amadeus — 桌面控制面板（设置页）。
  * 完整控制：局域网开关 / 配对 / 设备管理 + 远程通道（Tailscale Funnel / cpolar / 自建 FRP）。
  * 完全独立于 dsh-mobile，只走 /api/amadeus。
  */

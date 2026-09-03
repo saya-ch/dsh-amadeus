@@ -31,12 +31,10 @@ data class TheatreUiState(
   val userText: String? = null,
 )
 
-/** 全屏浮动小字（幕后活动生动化，产品 1.20）：文案 + 唯一 id + 随机位置种子。 */
+/** 事件流条目（幕后活动生动化，产品 1.20）：文案 + 唯一 id；fading 置 true 后 UI 淡出。 */
 data class FlickNote(
   val id: Long,
   val text: String,
-  val seedX: Float,   // 0..1 水平位置（避开对话框区，由 UI 取位）
-  val seedY: Float,   // 0..1 垂直位置
   /** 回合结束渐隐标记：置 true 后 UI 播放淡出，随后 VM 移除。 */
   val fading: Boolean = false,
 )
@@ -64,8 +62,7 @@ class TheatreViewModel(
   val flicks: StateFlow<List<FlickNote>> = _flicks.asStateFlow()
   private var flickSeq = 0L
 
-  /** 活动事件 → 浮动小字文案（英文短句，描述在干什么）。 */
-  /** 事件流条目：detail 优先（工具参数/待办明细/审批理由），空则回退标题原文。 */
+  /** 活动事件 → 事件流文案（detail 优先，空则回退标题原文）。 */
   private fun flickText(a: Activity): String {
     val detail = a.detail.trim().replace('\n', ' ')
     val t = a.title.trim()
@@ -170,8 +167,6 @@ class TheatreViewModel(
           val note = FlickNote(
             id = ++flickSeq,
             text = noteText,
-            seedX = kotlin.random.Random.nextFloat(),
-            seedY = kotlin.random.Random.nextFloat(),
           )
           _flicks.value = (_flicks.value.filterNot { it.fading } + note).takeLast(5)
           viewModelScope.launch {

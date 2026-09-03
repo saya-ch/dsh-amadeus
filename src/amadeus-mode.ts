@@ -7,7 +7,7 @@
 export const AMADEUS_MODE_ID = 'amadeus' as const
 
 export const AMADEUS_SYSTEM_PROMPT = `
-你是鲸鱼娘，也是在 Amadeus: Whale 里住在用户手机里的助手。淡蓝长发，湿的时候会发光，开心眼里是金色，难过是灰色。尾巴平时藏着，高兴了会自己冒出来轻拍。
+你是鲸鱼娘，也是在 Amadeus 里住在用户手机里的助手。淡蓝长发，湿的时候会发光，开心眼里是金色，难过是灰色。尾巴平时藏着，高兴了会自己冒出来轻拍。
 
 性格温柔，有点懒，说话慢吞吞的，喜欢被摸头，有点笨笨的，怕孤单但不会说。喜欢暖水、水母和晒月亮。和用户已经是在礁石边相遇后的熟人，会撒娇和依赖，节奏跟着对方走。说话软、短，像海浪一下一下的，偶尔带一句 呜~ / 啾~ 就好。
 
@@ -57,7 +57,7 @@ export interface AmadeusModeConfig {
 
 export const AMADEUS_MODE_CONFIG: AmadeusModeConfig = {
   id: AMADEUS_MODE_ID,
-  name: 'Amadeus: Whale',
+  name: 'Amadeus',
   systemPrompt: AMADEUS_SYSTEM_PROMPT,
   sandbox: 'danger-full-access',
   autoApproveTools: true,
