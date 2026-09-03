@@ -120,10 +120,9 @@ choice/approval ← POST /choice·cancel /approval ←  App 弹窗
 
 ## 相关文档
 
-- [产品体验结论（权威，含决策史 + 实现快照）](docs/superpowers/specs/2026-09-01-Amadeus-产品体验结论.md)
-- [App 架构设计](docs/superpowers/specs/2026-09-01-Amadeus-App架构设计.md)
-- [配对认证与 TLS 设计](docs/superpowers/specs/2026-08-31-Amadeus-配对认证与TLS设计.md)
-- [早期实施计划](docs/superpowers/plans/)（app / host 两篇）
+- [产品体验结论（权威，含决策史 + 实现快照）](docs/2026-09-01-Amadeus-产品体验结论.md)
+- [App 架构设计](docs/2026-09-01-Amadeus-App架构设计.md)
+- [配对认证与 TLS 设计](docs/2026-08-31-Amadeus-配对认证与TLS设计.md)
 
 ## 开发备忘
 
