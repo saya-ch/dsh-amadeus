@@ -2,7 +2,7 @@
 export { apply, Config, inject, name } from './amadeus-plugin.js'
 export { AMADEUS_EXTENSION_ID, createAmadeusExtension } from './amadeus-extension.js'
 export type { AmadeusGatewayOptions, AmadeusReport, AmadeusSessionSummary } from './amadeus-extension.js'
-export { AMADEUS_MODE_CONFIG, AMADEUS_MODE_ID, AMADEUS_SYSTEM_PROMPT } from './amadeus-mode.js'
+export { AMADEUS_MODE_ID } from './amadeus-mode.js'
 export {
   ensureAmadeusTag,
   hasAmadeusTag,

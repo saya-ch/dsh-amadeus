@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,12 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amadeus.whale.theme.LocalAmadeusColors
+import com.amadeus.whale.theatre.AssetImage
 
-/** 标题画面：logo（用户生成）+ 标题，淡入；兼作启动决策加载态（架构 3.13）。 */
+/** 标题画面：鲸鱼娘立绘 + 标题，淡入；兼作启动决策加载态（架构 3.13）。 */
 @Composable
 fun TitleScreen(
   logoVisible: Boolean = true,
@@ -43,10 +46,11 @@ fun TitleScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       if (logoVisible) {
-        // TODO: 用户用 GPT image2 生成的鲸鱼娘 logo（产品 1.11）
-        Text(
-          text = "🐳",
-          fontSize = 96.sp,
+        // 立绘即 logo（产品 1.11 前先用 maid-normal 站姿立绘，不再用 emoji）
+        AssetImage(
+          name = "maid-normal",
+          modifier = Modifier.heightIn(max = 420.dp),
+          contentScale = ContentScale.Fit,
         )
       }
       Text(
