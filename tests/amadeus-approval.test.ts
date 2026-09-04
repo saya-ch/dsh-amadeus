@@ -63,12 +63,25 @@ describe('approval adapter (方案 B: app-side approve/deny)', () => {
     expect(await outcome).toBe('cancelled')
   })
 
-  it('returns unavailable without a session id', async () => {
+  it('delegates to next() without a session id (desktop must reach web UI)', async () => {
     const ctx = makeCtx() as any
     const adapter = new AmadeusApprovalAdapter(ctx)
     adapter.install()
     const listener = ctx.__listeners.get('approval/request')!
-    const outcome = await listener({ id: 'appr_4', toolName: 'x' })
-    expect(outcome).toBe('unavailable')
+    const next = vi.fn(async () => 'allowed-once')
+    const outcome = await listener({ id: 'appr_4', toolName: 'x' }, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(outcome).toBe('allowed-once')
+  })
+
+  it('delegates to next() when no stream is registered for the session', async () => {
+    const ctx = makeCtx() as any
+    const adapter = new AmadeusApprovalAdapter(ctx)
+    adapter.install()
+    const listener = ctx.__listeners.get('approval/request')!
+    const next = vi.fn(async () => 'rejected')
+    const outcome = await listener({ id: 'appr_5', toolName: 'x', agent: 'desktop-sess' }, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(outcome).toBe('rejected')
   })
 })

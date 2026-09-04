@@ -34,7 +34,7 @@ interface PendingApproval {
 
 /** 上下文结构：on 事件 + stream 推送。 */
 export interface AmadeusApprovalContext {
-  on(name: string, listener: (request: AmadeusApprovalRequest) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
+  on(name: string, listener: (request: AmadeusApprovalRequest, next: () => unknown) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
   readonly logger?: { warn(message: string): void }
 }
 
@@ -60,7 +60,11 @@ export class AmadeusApprovalAdapter implements NonNullable<AmadeusGatewayOptions
    *  prepend: 抢占 first-wins slot——DSH web answerer（createApiProxy）先注册且认识每个请求，
    *    不 prepend 会被它吃掉（手机场景看不到电脑端弹窗）。 */
   install(): void {
-    this.ctx.on('approval/request', (request: AmadeusApprovalRequest) => {
+    // 只接有手机 SSE stream 的会话；桌面会话（无 stream）必须 next() 放行，
+    // 否则 web 审批卡片永远出不来（request 在此挂起或被 'unavailable' 短路）。
+    this.ctx.on('approval/request', (request: AmadeusApprovalRequest, next: () => unknown) => {
+      const sessionId = this.sessionIdOf(request)
+      if (sessionId === undefined || !this.streams.has(sessionId)) return next()
       return this.answerRequest(request)
     }, { global: true, prepend: true })
   }

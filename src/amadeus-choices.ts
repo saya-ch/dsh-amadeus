@@ -47,7 +47,7 @@ interface ChoiceMeta {
 
 /** Structural surface of the DSH context the choices adapter consumes. */
 export interface AmadeusChoicesContext {
-  on(name: string, listener: (request: AmadeusUserQuestionRequest) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
+  on(name: string, listener: (request: AmadeusUserQuestionRequest, next: () => unknown) => unknown, options?: { global?: boolean; prepend?: boolean }): unknown
   readonly logger?: { warn(message: string): void }
 }
 
@@ -199,7 +199,11 @@ export class AmadeusChoicesAdapter implements NonNullable<AmadeusGatewayOptions[
   install(): void {
     // prepend: 抢占 first-wins slot——DSH web answerer 先注册且认识每个请求，
     // 不 prepend 会被它吃掉（手机场景收不到提问，web 先弹窗挂起）。
-    this.ctx.on('user-questions/request', (request: AmadeusUserQuestionRequest) => {
+    // 但只接有手机 SSE stream 的会话；桌面会话（无 stream）必须 next() 放行，
+    // 否则 web 提问卡片永远出不来（request 在此挂起，waterfall 短路）。
+    this.ctx.on('user-questions/request', (request: AmadeusUserQuestionRequest, next: () => unknown) => {
+      const sessionId = AmadeusChoicesAdapter.sessionIdOf(request.agent)
+      if (sessionId === undefined || !this.streams.has(sessionId)) return next()
       return this.answerRequest(request)
     }, { global: true, prepend: true })
   }

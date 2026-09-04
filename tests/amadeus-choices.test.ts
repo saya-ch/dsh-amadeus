@@ -19,11 +19,11 @@ async function persistedChoiceId(dir: string): Promise<string> {
   throw new Error('choice not persisted')
 }
 
-function recordingCtx(): { registered: Array<(request: any) => any>; registeredOptions: any[]; ctx: any } {
-  const registered: Array<(request: any) => any> = []
+function recordingCtx(): { registered: Array<(request: any, next?: any) => any>; registeredOptions: any[]; ctx: any } {
+  const registered: Array<(request: any, next?: any) => any> = []
   const registeredOptions: any[] = []
   const ctx = {
-    on(name: string, handler?: (request: any) => any, options?: any) {
+    on(name: string, handler?: (request: any, next?: any) => any, options?: any) {
       if (name === 'user-questions/request' && typeof handler === 'function') { registered.push(handler); registeredOptions.push(options) }
     },
   }
@@ -70,6 +70,7 @@ describe('choices adapter', () => {
     const a = new AmadeusChoicesAdapter(ctx, dir)
     a.install()
     expect(registered).toHaveLength(1)
+    a.registerStream('amadeus', () => {})
 
     const request = {
       agent: 'amadeus',
@@ -89,6 +90,7 @@ describe('choices adapter', () => {
     const { registered, ctx } = recordingCtx()
     const a = new AmadeusChoicesAdapter(ctx, dir)
     a.install()
+    a.registerStream('amadeus', () => {})
 
     const controller = new AbortController()
     const request = {
@@ -134,7 +136,7 @@ describe('choices adapter', () => {
     unregister()
   })
 
-  it('unregister stops future choice pushes for a session', async () => {
+  it('unregister delegates to next() instead of hanging a streamless session', async () => {
     const { registered, ctx } = recordingCtx()
     const a = new AmadeusChoicesAdapter(ctx, dir)
     a.install()
@@ -147,14 +149,14 @@ describe('choices adapter', () => {
       signal: new AbortController().signal,
       questions: [{ id: 'q12', question: '选吗', options: [{ label: 'A' }] }],
     }
-    const pending = registered[0]!(request)
-    const choiceId = await persistedChoiceId(dir)
+    const next = vi.fn(async () => ({ answers: [{ id: 'q12', selected: ['A'] }] }))
+    const result = await registered[0]!(request, next)
+    expect(next).toHaveBeenCalledTimes(1)
     expect(pushed).toHaveLength(0)
-    await a.resolve(choiceId, 'A')
-    await expect(pending).resolves.toEqual({ answers: [{ id: 'q12', selected: ['A'] }] })
+    expect(result).toEqual({ answers: [{ id: 'q12', selected: ['A'] }] })
   })
 
-  it('keeps a question pending when no stream is registered (resolve still answers)', async () => {
+  it('delegates to next() when no stream is registered for the session (desktop must reach web UI)', async () => {
     const { registered, ctx } = recordingCtx()
     const a = new AmadeusChoicesAdapter(ctx, dir)
     a.install()
@@ -163,10 +165,10 @@ describe('choices adapter', () => {
       signal: new AbortController().signal,
       questions: [{ id: 'q13', question: '问', options: [{ label: 'A' }] }],
     }
-    const pending = registered[0]!(request)
-    const choiceId = await persistedChoiceId(dir)
-    await a.resolve(choiceId, 'A')
-    await expect(pending).resolves.toEqual({ answers: [{ id: 'q13', selected: ['A'] }] })
+    const next = vi.fn(async () => ({ answers: [{ id: 'q13', selected: ['A'] }] }))
+    const result = await registered[0]!(request, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ answers: [{ id: 'q13', selected: ['A'] }] })
   })
 
   it('answers a scope-filtered waterfall dispatch because the listener is global', async () => {
@@ -174,6 +176,7 @@ describe('choices adapter', () => {
     const context = new Context()
     const a = new AmadeusChoicesAdapter(context as any, dir)
     a.install()
+    a.registerStream('amadeus', () => {})
 
     const fallback = vi.fn(async () => { throw new Error('fallback should not be reached') })
     const scopeThis = { [Context.filter]: () => false }
@@ -197,6 +200,7 @@ describe('choices adapter', () => {
     const context = new Context()
     const a = new AmadeusChoicesAdapter(context as any, dir)
     a.install()
+    a.registerStream('amadeus', () => {})
 
     const fallback = vi.fn(async () => { throw new Error('fallback should not be reached') })
     const request = {
