@@ -220,6 +220,8 @@ fun TheatreScreen(
         Row {
           TextButton(onClick = { viewModel.openHistory() }) { Text("记录", color = topInk) }
           TextButton(onClick = { viewModel.openEventLog() }) { Text("幕后", color = topInk) }
+          // 报告入口：收到 Host 内联报告帧后才出现
+          if (state.latestReport != null) TextButton(onClick = { viewModel.openReport() }) { Text("报告", color = topInk) }
         }
         Row {
           if (!demoMode) TextButton(onClick = onOpenSaveSlot) { Text("读档", color = topInk) }

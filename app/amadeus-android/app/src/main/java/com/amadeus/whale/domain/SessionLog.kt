@@ -35,6 +35,7 @@ class SessionLog {
       is StreamEvent.ActivityEvent -> LogEntry.ActivityEntry(event.activity)
       is StreamEvent.ChoiceEvent -> LogEntry.ChoiceEntry(event.choice)
       is StreamEvent.ApprovalEvent -> return // 审批不是日志条目
+      is StreamEvent.ReportEvent -> return // 报告走顶栏入口，不进对话日志
       is StreamEvent.Ended -> return // 结束不是日志条目
       is StreamEvent.TurnEnded -> return // 回合结束是 UI 信号，不是日志条目
     }
@@ -105,6 +106,9 @@ class SessionStateMachine(private val log: SessionLog) {
       )
       is StreamEvent.ApprovalEvent -> {
         // 审批不改演出状态（UI 覆盖层处理）
+      }
+      is StreamEvent.ReportEvent -> {
+        // 报告不改演出状态（VM 存 latestReport，顶栏入口处理）
       }
       is StreamEvent.Ended -> _state.value = _state.value.copy(
         phase = SessionPhase.IDLE,

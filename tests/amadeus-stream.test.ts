@@ -130,6 +130,23 @@ describe('stream hub', () => {
     expect(savedReport!.markdown).toBe(long)
   })
 
+  it('emits an inline report frame with the full text after overlong intercept (report entry)', async () => {
+    const long = '这是第一句。这是第二句。这是第三句。这是第四句。这是第五句。这一段已经超过四个句子所以触发长文本拦截。'
+    let savedReport: { id: string; title: string; markdown: string } | undefined
+    const ctx = framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: `${long}\n[[AMW:{"sprite":"normal"}]]` }] } } } })
+    ctx.reports = { save: async (r: any) => { savedReport = r } }
+    const hub = new AmadeusStreamHub(ctx)
+    const written: string[] = []
+    const close = await hub.open('s1', d => written.push(d))
+    await flush()
+    await close()
+    const reportFrames = written.map(line => JSON.parse(line) as { type: string; reportId?: string; title?: string; body?: string }).filter(p => p.type === 'report')
+    expect(reportFrames).toHaveLength(1)
+    expect(reportFrames[0]!.reportId).toBe(savedReport!.id)
+    expect(reportFrames[0]!.title).toBe('长文本内容')
+    expect(reportFrames[0]!.body).toBe(long)
+  })
+
   it('does not intercept a normal-length reply', async () => {
     const text = '呜... 月光照在礁石上呢...\n[[AMW:{"sprite":"happy"}]]'
     const hub = new AmadeusStreamHub(framesFor({ type: 'event', event: { type: 'assistant/message', data: { message: { content: [{ type: 'text', text }] } } } }))

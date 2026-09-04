@@ -12,6 +12,7 @@ import com.amadeus.whale.domain.model.AmadeusTag
 import com.amadeus.whale.domain.model.ApprovalRequest
 import com.amadeus.whale.domain.model.Choice
 import com.amadeus.whale.domain.model.Dialogue
+import com.amadeus.whale.domain.model.Report
 import com.amadeus.whale.domain.model.StreamEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,8 @@ data class TheatreUiState(
   val windowType: String? = null,
   val overlay: OverlayState? = null,
   val demoFinished: Boolean = false,
+  /** 最新报告（Host 内联推送；顶栏“报告”入口就靠它）。 */
+  val latestReport: Report? = null,
   /** 当前回显的用户消息（发送后蓝字显示在对话框，直到收到下一条鲸鱼娘回复）。 */
   val userText: String? = null,
 )
@@ -150,6 +153,10 @@ class TheatreViewModel(
         // 方案 B：审批请求弹卡片（批准/拒绝）
         _uiState.value = _uiState.value.copy(typing = false, overlay = OverlayState.ApprovalPrompt(event.approval))
       }
+      is StreamEvent.ReportEvent -> {
+        // 报告只存不弹（提问/审批优先）；用户点顶栏“报告”入口看
+        _uiState.value = _uiState.value.copy(latestReport = event.report)
+      }
       is StreamEvent.Ended -> _uiState.value = _uiState.value.copy(typing = false)
       is StreamEvent.TurnEnded -> {
         // agent 停笔：事件流渐隐清空；当前 dialogue 若正显示工作符号则去除（最终回答）
@@ -229,6 +236,11 @@ class TheatreViewModel(
   fun openEventLog() = openOverlay(OverlayState.EventLog(activities.toList()))
 
   fun openHistory() = openOverlay(OverlayState.History(log.chatLines()))
+
+  /** 打开最新报告（顶栏“报告”入口）。 */
+  fun openReport() {
+    _uiState.value.latestReport?.let { openOverlay(OverlayState.Report(it.title, it.body)) }
+  }
 
   fun resolveChoice(choice: Choice, label: String) {
     android.util.Log.d("AMW", "vm resolveChoice ${choice.choiceId.take(12)} -> ${label.take(16)}")

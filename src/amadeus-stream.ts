@@ -205,6 +205,13 @@ export class AmadeusStreamHub {
         tag: this.tagWithWindow(tag, 'report', reportId, '长文本内容'),
         working: false,
       }))
+      // 报告正文内联推送（App 报告入口就靠这帧；reports.save 只落盘，App 拿不到）
+      write(JSON.stringify({
+        type: 'report',
+        reportId,
+        title: '长文本内容',
+        body: clean,
+      }))
       return
     }
     write(JSON.stringify({

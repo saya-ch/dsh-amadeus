@@ -49,12 +49,20 @@ data class ApprovalRequest(
   val reason: String? = null,
 )
 
+/** 报告（长文本铁律：Host 内联推送全文，App 报告入口就靠它）。 */
+data class Report(
+  val reportId: String,
+  val title: String,
+  val body: String,
+)
+
 /** SSE 事件（架构 3.19 契约）。 */
 sealed class StreamEvent {
   data class DialogueEvent(val dialogue: Dialogue) : StreamEvent()
   data class ActivityEvent(val activity: Activity) : StreamEvent()
   data class ChoiceEvent(val choice: Choice) : StreamEvent()
   data class ApprovalEvent(val approval: ApprovalRequest) : StreamEvent()
+  data class ReportEvent(val report: Report) : StreamEvent()
   data class Ended(val reason: String) : StreamEvent()
   /** 回合结束（agent 停笔）：事件流渐隐清空、末句工作符号去除。 */
   data class TurnEnded(val reason: String) : StreamEvent()

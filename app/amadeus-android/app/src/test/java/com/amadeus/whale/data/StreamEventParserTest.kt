@@ -1,6 +1,6 @@
 package com.amadeus.whale.data
 
-import com.amadeus.whale.domain.model.AmadeusMood
+import com.amadeus.whale.domain.model.AmadeusSprite
 import com.amadeus.whale.domain.model.StreamEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -11,12 +11,12 @@ class StreamEventParserTest {
   @Test
   fun `parse dialogue frame`() {
     val ev = StreamEventParser.parse(
-      """{"type":"dialogue","text":"你好呀","tag":{"mood":"happy","sprite":"wag"}}""",
+      """{"type":"dialogue","text":"你好呀","tag":{"sprite":"happy"}}""",
     )
     assertTrue(ev is StreamEvent.DialogueEvent)
     val d = (ev as StreamEvent.DialogueEvent).dialogue
     assertEquals("你好呀", d.text)
-    assertEquals(AmadeusMood.happy, d.tag.mood)
+    assertEquals(AmadeusSprite.happy, d.tag.sprite)
   }
 
   @Test
@@ -40,6 +40,18 @@ class StreamEventParserTest {
     assertEquals("c1", c.choiceId)
     assertEquals(2, c.options.size)
     assertEquals("A", c.options[0].label)
+  }
+
+  @Test
+  fun `parse report frame`() {
+    val ev = StreamEventParser.parse(
+      """{"type":"report","reportId":"amw-abc123","title":"长文本内容","body":"第一句。第二句。"}""",
+    )
+    assertTrue(ev is StreamEvent.ReportEvent)
+    val r = (ev as StreamEvent.ReportEvent).report
+    assertEquals("amw-abc123", r.reportId)
+    assertEquals("长文本内容", r.title)
+    assertEquals("第一句。第二句。", r.body)
   }
 
   @Test

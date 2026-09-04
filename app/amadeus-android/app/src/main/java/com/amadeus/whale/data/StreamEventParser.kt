@@ -9,6 +9,7 @@ import com.amadeus.whale.domain.model.ApprovalRequest
 import com.amadeus.whale.domain.model.Choice
 import com.amadeus.whale.domain.model.ChoiceOption
 import com.amadeus.whale.domain.model.Dialogue
+import com.amadeus.whale.domain.model.Report
 import com.amadeus.whale.domain.model.StreamEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -16,7 +17,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-/** SSE 帧解析（架构 3.19 契约：dialogue/activity/choice/ended）。 */
+/** SSE 帧解析（架构 3.19 契约：dialogue/activity/choice/approval/report/ended）。 */
 object StreamEventParser {
   private val json = Json { ignoreUnknownKeys = true }
 
@@ -52,6 +53,12 @@ object StreamEventParser {
         val toolName = (obj["toolName"] as? JsonPrimitive)?.content ?: ""
         val reason = (obj["reason"] as? JsonPrimitive)?.contentOrNull
         StreamEvent.ApprovalEvent(ApprovalRequest(approvalId, toolName, reason))
+      }
+      "report" -> {
+        val reportId = (obj["reportId"] as? JsonPrimitive)?.content ?: return null
+        val title = (obj["title"] as? JsonPrimitive)?.content ?: ""
+        val body = (obj["body"] as? JsonPrimitive)?.content ?: ""
+        StreamEvent.ReportEvent(Report(reportId, title, body))
       }
       "ended" -> StreamEvent.Ended((obj["reason"] as? JsonPrimitive)?.content ?: "")
       "turn" -> StreamEvent.TurnEnded((obj["reason"] as? JsonPrimitive)?.content ?: "")
