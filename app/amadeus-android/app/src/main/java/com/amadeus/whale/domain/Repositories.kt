@@ -42,15 +42,6 @@ interface SessionRepository {
   fun openStream(sessionId: String, onEvent: (StreamEvent) -> Unit): AutoCloseable
 }
 
-/** 窗口 Repository（报告/预览，产品 1.9）。 */
-interface WindowRepository {
-  suspend fun report(reportId: String): ReportView
-  suspend fun preview(previewId: String): PreviewView
-}
-
-data class ReportView(val id: String, val title: String, val markdown: String, val createdAt: Long)
-data class PreviewView(val id: String, val type: String, val content: String, val title: String)
-
 /** 工作区视图（会话选择器：默认 Amadeus 工作区 / 其他目录）。 */
 data class WorkspaceView(
   val id: String,
