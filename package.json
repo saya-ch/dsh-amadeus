@@ -40,6 +40,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "vitest run --pool=threads --maxWorkers=1"

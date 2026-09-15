@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="app/amadeus-android/app/src/main/assets/amadeus/maid-normal.webp" width="210" alt="Amadeus · 鲸鱼娘">
+<img src="docs/assets/icon.svg" width="120" alt="Amadeus">
 
-# 🐋 Amadeus
+# Amadeus
 
 **DSH 的 Galgame Mode —— 鲸鱼娘住在你的手机里，在电脑上替你干活**
 
@@ -13,10 +13,18 @@
 
 [![License](https://img.shields.io/badge/code-Apache--2.0-blue.svg?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933.svg?style=flat-square&logo=node.js&logoColor=white)](package.json)
-[![Tests](https://img.shields.io/badge/host%20tests-99%20passing-brightgreen.svg?style=flat-square)](#-状态仪表盘)
+[![Tests](https://img.shields.io/badge/tests-99%20host%20%2B%2080%20app-brightgreen.svg?style=flat-square)](#-状态仪表盘)
 [![Android](https://img.shields.io/badge/android-10%2B%20(API%2029)-3DDC84.svg?style=flat-square&logo=android&logoColor=white)](#-快速开始)
 [![DSH](https://img.shields.io/badge/DSH-plugin-4B32C3.svg?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)
 [![Art](https://img.shields.io/badge/art-CC%20BY--NC--SA%204.0-lightgrey.svg?style=flat-square)](#-素材与合规)
+
+<br>
+
+<a href="https://github.com/saya-ch/dsh-amadeus/releases/latest/download/amadeus.apk">
+  <img src="https://img.shields.io/badge/%E2%AC%87%20%E4%B8%8B%E8%BD%BD%20APK-v0.1.0-2563eb?style=for-the-badge&logo=android&logoColor=white" alt="下载 APK" height="42">
+</a>
+
+<sub>43 MB · Android 10+ · [全部版本](https://github.com/saya-ch/dsh-amadeus/releases)</sub>
 
 <br>
 
@@ -57,10 +65,11 @@
 
 | | | |
 |---|---|---|
-| [🌊 这是什么](#-这是什么) | [🏛 三层架构](#-三层架构) | [💬 演出协议](#-演出协议-amw) |
-| [🗂 仓库地图](#-仓库地图) | [🚀 快速开始](#-快速开始) | [📱 App 演出层](#-app-演出层) |
-| [📊 状态仪表盘](#-状态仪表盘) | [🗺 路线图](#-路线图) | [🤝 共创](#-共创) |
-| [🎨 素材与合规](#-素材与合规) | [📚 深入文档](#-深入文档) | [🛠 开发备忘](#-开发备忘) |
+| [🌊 这是什么](#-这是什么) | [📘 使用教程](#-使用教程) | [🏛 三层架构](#-三层架构) |
+| [💬 演出协议](#-演出协议-amw) | [🗂 仓库地图](#-仓库地图) | [🚀 快速开始](#-快速开始) |
+| [📱 App 演出层](#-app-演出层) | [📊 状态仪表盘](#-状态仪表盘) | [🗺 路线图](#-路线图) |
+| [🤝 共创](#-共创) | [🎨 素材与合规](#-素材与合规) | [📚 深入文档](#-深入文档) |
+| [🛠 开发备忘](#-开发备忘) | [📦 发布流程](docs/发布流程.md) | |
 
 ---
 
@@ -315,6 +324,77 @@ sequenceDiagram
 
 > ⚠️ 凭据**按网关 origin 隔离** —— 换域名 / 端口需重新配对。
 > 局域网（`:10486`）与 cpolar 远程隧道**共享同一配对窗口**。
+
+---
+
+## 📘 使用教程
+
+> **三步：电脑装插件 → 手机装 App → 扫码配对。** 全程约 5 分钟。
+
+### 第 0 步 · 准备
+
+| 位置 | 要求 |
+|:---|:---|
+| 🖥 **电脑** | Node.js `^22.19` 或 `>=24` · 已装 DSH |
+| 📱 **手机** | Android 10+（API 29+） |
+| 🌐 **网络** | 与电脑同一局域网；或走 cpolar / Tailscale / 自建 FRP 远程通道 |
+
+### 第 1 步 · 电脑：安装插件
+
+```bash
+git clone https://github.com/saya-ch/dsh-amadeus
+cd dsh-amadeus
+npm install && npm run build      # 产出 lib/index.mjs（Host 插件）+ lib/client.js（控制面板）
+
+# 注册进 DSH 的 web profile（路径换成你的绝对路径）
+dsh plugin --profile web add file:/absolute/path/to/dsh-amadeus
+dsh --profile web
+```
+
+> 📦 `dsh-amadeus` **尚未发布到 npm**，因此用本地路径安装；
+> 包内声明了 `dsh.bundle.patch`，`dsh plugin add` 会自动把它挂进 profile 的 bundles。
+> 首次启动时插件把「Amadeus: Whale」预设写入 `~/.dsh/.agent-presets/amadeus/`。
+
+### 第 2 步 · 手机：安装 App
+
+**[⬇ 下载 amadeus.apk](https://github.com/saya-ch/dsh-amadeus/releases/latest/download/amadeus.apk)**（约 43 MB）
+
+1. 用手机浏览器打开上面的链接
+2. 提示「未知来源应用」时允许安装
+3. 打开 App —— 首次会播放 **demo 相识剧本**（海边月夜初遇）
+
+> 全部历史版本见 [Releases](https://github.com/saya-ch/dsh-amadeus/releases)。
+
+### 第 3 步 · 配对
+
+```text
+🖥 电脑：DSH → 设置 → 「Amadeus 网关」→ 开启网关 → 生成配对
+                                                    │
+                                          （出现二维码 + 配对链接）
+                                                    │
+📱 手机：App 连接页 → 扫码，或粘贴配对链接
+                                                    │
+                                            ☑ 配对完成，进入读档页
+```
+
+### 第 4 步 · 开始使用
+
+| 界面 | 做什么 |
+|:---|:---|
+| 💾 **读档页** | 列出全部 `amadeus` 会话（= 存档位），按工作区分组倒序 |
+| 🌅 **开启新的一天** | 新建会话，可选工作区目录 |
+| 🎭 **剧场** | 底部输入框打字说话；她在电脑上真实干活，长报告收进小窗 |
+| ⚙️ **设置** | 网关地址 / 测试连接 / 断开 / 演出偏好 |
+
+### 常见问题
+
+| 现象 | 原因 / 处理 |
+|:---|:---|
+| App 停在 demo，进不去真实会话 | 电脑网关没开，或地址填错 → 设置页点「测试」 |
+| 配对成功但连不上 | 电脑防火墙拦了 `10486` 端口 |
+| 换了地址要重新配对 | **预期行为** —— 凭据按 origin 隔离 |
+| 手机不在同一局域网 | 启用 cpolar / Tailscale / 自建 FRP 远程通道 |
+| 想看电脑上的原始对话 | 会话就是普通 DSH 会话，DSH web 里能直接看到 |
 
 ---
 

@@ -227,8 +227,9 @@ class NativeAuthClient(
   }
 
   private fun isRemoteHost(host: String): Boolean {
-    // IP（IPv4/IPv6）视为 LAN 直连；其余（域名）视为远程隧道
-    val trimmed = host.trim('[', ']')
+    // IP（IPv4/IPv6）与 loopback 名（localhost）视为 LAN 直连；其余（域名）视为远程隧道
+    val trimmed = host.trim('[', ']').lowercase()
+    if (trimmed == "localhost" || trimmed.endsWith(".localhost")) return false
     val ipv4 = Regex("^(\\d{1,3}\\.){3}\\d{1,3}$").matches(trimmed)
     val ipv6 = trimmed.contains(':')
     return !ipv4 && !ipv6

@@ -13,3 +13,11 @@ app/amadeus-android/.kotlin/
 app/amadeus-android/app/.cxx/
 app/amadeus-android/build/
 app/amadeus-android/local.properties
+
+# Android 签名密钥（绝不入库）
+*.jks
+*.keystore
+keystore.properties
+
+# 打包产物
+app/amadeus-android/amadeus.apk

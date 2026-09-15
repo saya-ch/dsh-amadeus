@@ -22,8 +22,11 @@ class NativeAuthClientTest {
   @After fun tearDown() { server.shutdown() }
 
   private fun origin(): GatewayOrigin {
+    // 写死 127.0.0.1，不能用 server.url().host：后者来自反向解析，
+    // 某些机器（hosts 把 localhost 映射为域名）会拿到非 IP 域名，
+    // 导致 NativeAuthClient 误判为「远程隧道」而绕过注入的 sessionClientFactory。
     val url = server.url("/")
-    return GatewayOrigin(url.host, url.port)
+    return GatewayOrigin("127.0.0.1", url.port)
   }
 
   private fun schemeRewritingClient(): OkHttpClient =
