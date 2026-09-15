@@ -32,8 +32,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest 已预装 Android SDK 且许可已接受；不再用 setup-android
+      # （其默认 packages 含已被 SDK 仓库移除的 `tools`，会直接报错退出）
 
       - name: 解析版本号
         id: version
@@ -90,7 +90,7 @@ jobs:
         working-directory: app/amadeus-android
         run: |
           set -euo pipefail
-          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -1)
+          APKSIGNER=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --print-certs amadeus.apk
 
       - name: 发布 Release

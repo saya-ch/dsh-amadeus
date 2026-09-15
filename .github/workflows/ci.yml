@@ -51,8 +51,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest 已预装 Android SDK 且许可已接受
 
       - name: 单元测试
         working-directory: app/amadeus-android
