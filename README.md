@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/icon.svg" width="120" alt="Amadeus">
+<img src="docs/assets/icon.png" width="132" alt="Amadeus · 鲸鱼娘">
 
 # Amadeus
 
