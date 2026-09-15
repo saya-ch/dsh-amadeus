@@ -17,6 +17,9 @@ import org.junit.Test
 class NativeAuthClientTest {
   private lateinit var server: MockWebServer
 
+  /** 固定基准时刻：同一用例内的过期时间都相对它计算，避免两次 currentTimeMillis() 跨毫秒。 */
+  private val base = System.currentTimeMillis()
+
   @Before fun setUp() { server = MockWebServer(); server.start() }
 
   @After fun tearDown() { server.shutdown() }
@@ -48,10 +51,10 @@ class NativeAuthClientTest {
     instanceId: String = "a".repeat(64),
     deviceId: String = "b".repeat(32),
     deviceToken: String = "C".repeat(43),
-    deviceExpiresAt: Long = System.currentTimeMillis() + 3600_000,
+    deviceExpiresAt: Long = base + 7_200_000,
     sessionToken: String = "D".repeat(43),
     csrfToken: String = "e".repeat(43),
-    sessionExpiresAt: Long = System.currentTimeMillis() + 3600_000,
+    sessionExpiresAt: Long = base + 3_600_000,
   ): String =
     """{"instanceId":"$instanceId","deviceId":"$deviceId","deviceToken":"$deviceToken","deviceExpiresAt":$deviceExpiresAt,"sessionToken":"$sessionToken","csrfToken":"$csrfToken","sessionExpiresAt":$sessionExpiresAt}"""
 
@@ -60,7 +63,7 @@ class NativeAuthClientTest {
     deviceId: String = "b".repeat(32),
     sessionToken: String = "D".repeat(43),
     csrfToken: String = "e".repeat(43),
-    sessionExpiresAt: Long = System.currentTimeMillis() + 3600_000,
+    sessionExpiresAt: Long = base + 3_600_000,
   ): String =
     """{"instanceId":"$instanceId","deviceId":"$deviceId","sessionToken":"$sessionToken","csrfToken":"$csrfToken","sessionExpiresAt":$sessionExpiresAt}"""
 
@@ -154,7 +157,7 @@ class NativeAuthClientTest {
   }
 
   @Test fun pairRejectsPastSessionExpiresAt() = runTest {
-    server.enqueue(MockResponse().setResponseCode(201).setBody(pairBody(sessionExpiresAt = System.currentTimeMillis() - 1000)).addHeader("Content-Type", "application/json"))
+    server.enqueue(MockResponse().setResponseCode(201).setBody(pairBody(sessionExpiresAt = base - 1000)).addHeader("Content-Type", "application/json"))
     val ex = runCatching { client().pair(origin(), "T".repeat(43), ByteArray(0), "a".repeat(64)) }.exceptionOrNull() as? NativeAuthException
     assertNotNull(ex)
     assertEquals(NativeAuthFailureKind.INVALID_RESPONSE, ex!!.kind)
@@ -177,7 +180,7 @@ class NativeAuthClientTest {
   }
 
   @Test fun pairRejectsMissingKeys() = runTest {
-    val body = """{"instanceId":"${"a".repeat(64)}","deviceId":"${"b".repeat(32)}","sessionToken":"${"D".repeat(43)}","csrfToken":"${"e".repeat(43)}","sessionExpiresAt":${System.currentTimeMillis() + 3600_000}}"""
+    val body = """{"instanceId":"${"a".repeat(64)}","deviceId":"${"b".repeat(32)}","sessionToken":"${"D".repeat(43)}","csrfToken":"${"e".repeat(43)}","sessionExpiresAt":${base + 3_600_000}}"""
     server.enqueue(MockResponse().setResponseCode(201).setBody(body).addHeader("Content-Type", "application/json"))
     val ex = runCatching { client().pair(origin(), "T".repeat(43), ByteArray(0), "a".repeat(64)) }.exceptionOrNull() as? NativeAuthException
     assertNotNull(ex)
