@@ -1,6 +1,8 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
 import { once } from 'node:events'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import * as amadeusPlugin from '../src/amadeus-plugin.js'
@@ -48,8 +50,8 @@ describe('amadeus admin routes (HTTP integration)', () => {
     context.provide('workspaceRegistry', { list: async () => [], archiveSession: async () => {} } as never)
 
     const mounted = await context.plugin(amadeusPlugin, {
-      stateFile: 'C:/Users/test/.dsh/amadeus/devices.json',
-      controlFile: 'C:/Users/test/.dsh/amadeus/control.json',
+      stateFile: join(tmpdir(), 'amadeus-test', 'devices.json'),
+      controlFile: join(tmpdir(), 'amadeus-test', 'control.json'),
       initiallyEnabled: false,
       listenHost: '127.0.0.1',
       listenPort: 0,

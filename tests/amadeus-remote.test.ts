@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   amadeusCpolarStateDirectory,
@@ -13,11 +15,14 @@ import {
 } from '../src/amadeus-remote.js'
 import { parseGatewayConfig } from '../src/config.js'
 
+/** Platform-absolute scratch path — `C:/...` is not absolute on Linux (CI). */
+const SCRATCH = join(tmpdir(), 'amadeus-test')
+
 /** Minimal resolved config derived from the real parser with a loopback template. */
 function resolvedTemplate(): ReturnType<typeof parseGatewayConfig> {
   return parseGatewayConfig({
-    stateFile: 'C:/Users/test/.dsh/amadeus/devices.json',
-    controlFile: 'C:/Users/test/.dsh/amadeus/control.json',
+    stateFile: join(SCRATCH, 'devices.json'),
+    controlFile: join(SCRATCH, 'control.json'),
     initiallyEnabled: false,
     listenHost: '127.0.0.1',
     listenPort: 3444,
@@ -84,7 +89,7 @@ describe('amadeus remote gateway config', () => {
     const remote = amadeusRemoteGatewayConfig(
       template,
       'https://amw.example.com',
-      'C:/Users/test/.dsh/amadeus/remote/devices.json',
+      join(SCRATCH, 'remote', 'devices.json'),
       'a'.repeat(64),
     )
     expect(remote.listenHost).toBe('127.0.0.1')
@@ -103,7 +108,7 @@ describe('amadeus remote gateway config', () => {
     const remote = amadeusRemoteGatewayConfig(
       template,
       'https://amw.example.com',
-      'C:/Users/test/.dsh/amadeus/remote/devices.json',
+      join(SCRATCH, 'remote', 'devices.json'),
       'a'.repeat(64),
       4321,
     )
@@ -115,7 +120,7 @@ describe('amadeus remote gateway config', () => {
     expect(() => amadeusRemoteGatewayConfig(
       template,
       'http://amw.example.com',
-      'C:/Users/test/.dsh/amadeus/remote/devices.json',
+      join(SCRATCH, 'remote', 'devices.json'),
       'a'.repeat(64),
     )).toThrow('remote public origin must be an HTTPS origin')
   })
@@ -125,7 +130,7 @@ describe('amadeus remote gateway config', () => {
     expect(() => amadeusRemoteGatewayConfig(
       template,
       'https://amw.example.com/path',
-      'C:/Users/test/.dsh/amadeus/remote/devices.json',
+      join(SCRATCH, 'remote', 'devices.json'),
       'a'.repeat(64),
     )).toThrow('remote public origin must be an HTTPS origin')
   })
