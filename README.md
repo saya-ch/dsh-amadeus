@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/icon.png" width="120" alt="Amadeus">
+<img src="docs/assets/app-icon.png" width="120" alt="Amadeus">
 
 # Amadeus
 
