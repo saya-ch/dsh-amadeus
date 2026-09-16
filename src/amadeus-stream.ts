@@ -201,7 +201,7 @@ export class AmadeusStreamHub {
       }))
       write(JSON.stringify({
         type: 'dialogue',
-        text: '详细内容我放进小窗口里啦 啾~',
+        text: '详细内容我放进小窗口里啦',
         tag: this.tagWithWindow(tag, 'report', reportId, '长文本内容'),
         working: false,
       }))
