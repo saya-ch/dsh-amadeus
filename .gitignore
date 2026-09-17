@@ -24,3 +24,6 @@ app/amadeus-android/amadeus.apk
 
 # 调试产物
 page.html
+
+# Playwright MCP 会话快照
+.playwright-mcp/
