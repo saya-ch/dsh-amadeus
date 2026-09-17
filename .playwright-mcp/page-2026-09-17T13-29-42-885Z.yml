@@ -1,0 +1,168 @@
+- generic [ref=f1e3]:
+  - region "网站通知" [ref=f1e379]:
+    - generic [ref=f1e8]:
+      - generic [ref=f1e9]: ⚠️
+      - alert [ref=f1e11]:
+        - text: 绕过2FA的NPM代币被限制——账户变更（2026年8月）和直接发布（2027年1月）。
+        - link "了解如何为 npm 绕过 2FA 令牌弃用做准备" [ref=f1e380] [cursor=pointer]:
+          - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+          - text: 学习如何准备→
+      - button "关闭通知" [ref=f1e381] [cursor=pointer]: ×
+  - generic [ref=f1e473]:
+    - banner [ref=f1e474]:
+      - generic [ref=f1e475]:
+        - generic [ref=f1e476]:
+          - text: "skip to:"
+          - link "skip to content" [ref=f1e477] [cursor=pointer]:
+            - /url: "#main"
+            - text: content
+          - link "skip to package search" [ref=f1e478] [cursor=pointer]:
+            - /url: "#search"
+            - text: package search
+        - generic [ref=f1e479]:
+          - button "光模式——点击可选择暗" [ref=f1e480] [cursor=pointer]
+          - navigation "产品导航" [ref=f1e483]:
+            - list [ref=f1e484]:
+              - listitem [ref=f1e485]:
+                - link "优点" [ref=f1e486] [cursor=pointer]:
+                  - /url: /products/pro
+              - listitem [ref=f1e487]:
+                - link "参赛队伍" [ref=f1e488] [cursor=pointer]:
+                  - /url: /products/teams
+              - listitem [ref=f1e489]:
+                - link "定价" [ref=f1e490] [cursor=pointer]:
+                  - /url: /products
+              - listitem [ref=f1e491]:
+                - link "文献资料" [ref=f1e492] [cursor=pointer]:
+                  - /url: https://docs.npmjs.com
+      - generic [ref=f1e494]:
+        - generic [ref=f1e495]: NPM
+        - link "不客气" [ref=f1e497] [cursor=pointer]:
+          - /url: /
+        - generic [ref=f1e501]:
+          - combobox "搜索包" [ref=f1e511]
+          - button "搜索" [ref=f1e513]
+        - navigation [ref=f1e515]:
+          - button "个人资料菜单" [ref=f1e516]:
+            - generic [ref=f1e517]: 菜单
+    - main [ref=f1e523]:
+      - generic [ref=f1e524]:
+        - complementary [ref=f1e525]:
+          - heading "Sidebar" [level=2] [ref=f1e526]
+          - generic [ref=f1e527]:
+            - navigation "Settings navigation" [ref=f1e528]:
+              - list [ref=f1e529]:
+                - listitem [ref=f1e530]:
+                  - link "Profile" [ref=f1e531] [cursor=pointer]:
+                    - /url: /~saya-ch
+                - listitem [ref=f1e534]:
+                  - link "Packages" [ref=f1e535] [cursor=pointer]:
+                    - /url: /settings/saya-ch/packages
+                - listitem [ref=f1e538]:
+                  - link "Account" [ref=f1e539] [cursor=pointer]:
+                    - /url: /settings/saya-ch/profile
+                - listitem [ref=f1e542]:
+                  - link "Billing Info" [ref=f1e543] [cursor=pointer]:
+                    - /url: /settings/saya-ch/billing
+                - listitem [ref=f1e546]:
+                  - link "Access Tokens" [ref=f1e547] [cursor=pointer]:
+                    - /url: /settings/saya-ch/tokens
+                - listitem [ref=f1e550]:
+                  - link "Staged Packages" [ref=f1e551] [cursor=pointer]:
+                    - /url: /settings/saya-ch/staged-packages
+            - generic [ref=f1e554]:
+              - heading "Organizations" [level=3] [ref=f1e555]
+              - link "Create New Organization" [ref=f1e556] [cursor=pointer]:
+                - /url: /org/create
+                - text: +
+            - paragraph [ref=f1e558]: None
+        - generic [ref=f1e562]:
+          - generic [ref=f1e563]:
+            - generic [ref=f1e564]:
+              - heading "Access Tokens" [level=1] [ref=f1e565]
+              - link "Generate New Token" [ref=f1e567] [cursor=pointer]:
+                - /url: /settings/saya-ch/tokens/granular-access-tokens/new
+              - button "Delete Selected Tokens" [ref=f1e569]
+            - table [ref=f1e571]:
+              - rowgroup [ref=f1e572]:
+                - row [ref=f1e573]:
+                  - columnheader [ref=f1e574]:
+                    - checkbox "Select all" [ref=f1e575]
+                  - columnheader "Name" [ref=f1e576]
+                  - columnheader "Bypass 2FA" [ref=f1e577]
+                  - columnheader "Created" [ref=f1e578]
+                  - columnheader "Last used" [ref=f1e579]
+                  - columnheader "Expires" [ref=f1e580]
+                  - columnheader "Delete" [ref=f1e581]
+              - rowgroup [ref=f1e583]:
+                - row [ref=f1e584]:
+                  - cell [ref=f1e585]:
+                    - checkbox "label for npm_YMFx......PfO4" [ref=f1e586]
+                  - cell [ref=f1e587]:
+                    - generic [ref=f1e588]:
+                      - link "main" [ref=f1e589] [cursor=pointer]:
+                        - /url: /settings/saya-ch/tokens/granular-access-tokens/99babfa9-cae7-489e-ba14-cbf32b2041cb
+                      - code [ref=f1e591]: npm_YMFx......PfO4
+                  - cell [ref=f1e592]
+                  - cell [ref=f1e596]:
+                    - time [ref=f1e597]: Aug 14, 2026
+                  - cell [ref=f1e598]:
+                    - time [ref=f1e599]: Sep 16, 2026
+                  - cell [ref=f1e600]:
+                    - time [ref=f1e601]: Nov 12, 2026
+                  - cell [ref=f1e602]:
+                    - button "Delete token ending in PfO4" [ref=f1e604] [cursor=pointer]: ×
+            - generic [ref=f1e605]: Rows 1 to 1 of 1
+          - paragraph [ref=f1e608]:
+            - link "📋 Read the Documentation" [ref=f1e609] [cursor=pointer]:
+              - /url: https://docs.npmjs.com/about-authentication-tokens
+    - contentinfo [ref=f1e610]:
+      - heading "Footer" [level=2] [ref=f1e611]
+      - generic [ref=f1e612]:
+        - generic [ref=f1e613]:
+          - link "Visit npm GitHub page" [ref=f1e615] [cursor=pointer]:
+            - /url: https://github.com/npm
+          - link "GitHub" [ref=f1e620] [cursor=pointer]:
+            - /url: https://github.com
+        - generic [ref=f1e623]:
+          - heading "Support" [level=3] [ref=f1e624]
+          - list "Support" [ref=f1e625]:
+            - listitem [ref=f1e626]:
+              - link "Help" [ref=f1e627] [cursor=pointer]:
+                - /url: https://docs.npmjs.com
+            - listitem [ref=f1e628]:
+              - link "Advisories" [ref=f1e629] [cursor=pointer]:
+                - /url: https://github.com/advisories
+            - listitem [ref=f1e630]:
+              - link "Status" [ref=f1e631] [cursor=pointer]:
+                - /url: http://status.npmjs.org/
+            - listitem [ref=f1e632]:
+              - link "Contact npm" [ref=f1e633] [cursor=pointer]:
+                - /url: /support
+        - generic [ref=f1e634]:
+          - heading "Company" [level=3] [ref=f1e635]
+          - list "Company" [ref=f1e636]:
+            - listitem [ref=f1e637]:
+              - link "About" [ref=f1e638] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=f1e639]:
+              - link "Blog" [ref=f1e640] [cursor=pointer]:
+                - /url: https://github.blog/tag/npm/
+            - listitem [ref=f1e641]:
+              - link "Press" [ref=f1e642] [cursor=pointer]:
+                - /url: /press
+        - generic [ref=f1e643]:
+          - heading "Terms & Policies" [level=3] [ref=f1e644]
+          - list "Terms & Policies" [ref=f1e645]:
+            - listitem [ref=f1e646]:
+              - link "Policies" [ref=f1e647] [cursor=pointer]:
+                - /url: /policies/
+            - listitem [ref=f1e648]:
+              - link "Terms of Use" [ref=f1e649] [cursor=pointer]:
+                - /url: /policies/terms
+            - listitem [ref=f1e650]:
+              - link "Code of Conduct" [ref=f1e651] [cursor=pointer]:
+                - /url: /policies/conduct
+            - listitem [ref=f1e652]:
+              - link "Privacy" [ref=f1e653] [cursor=pointer]:
+                - /url: /policies/privacy

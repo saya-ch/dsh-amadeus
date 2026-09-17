@@ -50,7 +50,19 @@ jobs:
       - name: 构建
         run: npm run build
 
+      - name: 检查版本是否已发布
+        id: check
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          if npm view "dsh-amadeus@$PKG" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "版本 $PKG 已存在于 npm，跳过发布"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 发布
+        if: steps.check.outputs.published != 'true'
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

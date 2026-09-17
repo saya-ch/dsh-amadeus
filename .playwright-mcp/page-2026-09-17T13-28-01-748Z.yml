@@ -1,0 +1,309 @@
+- generic [ref=f1e3]:
+  - region "Site notifications" [ref=f1e4]:
+    - generic [ref=f1e8]:
+      - generic [ref=f1e9]: ⚠️
+      - alert [ref=f1e11]:
+        - text: npm tokens that bypass 2FA are being restricted — account changes (Aug 2026) and direct publishing (Jan 2027).
+        - link "Learn how to prepare for the npm bypass 2FA token deprecation" [ref=f1e12] [cursor=pointer]:
+          - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+          - text: Learn how to prepare →
+      - button "Close notification" [ref=f1e13] [cursor=pointer]: ×
+  - generic [ref=f1e14]:
+    - banner [ref=f1e15]:
+      - generic [ref=f1e16]:
+        - generic [ref=f1e17]:
+          - text: "skip to:"
+          - link "skip to content" [ref=f1e18] [cursor=pointer]:
+            - /url: "#main"
+            - text: content
+          - link "skip to package search" [ref=f1e19] [cursor=pointer]:
+            - /url: "#search"
+            - text: package search
+        - generic [ref=f1e20]:
+          - button "Light mode — click for dark" [ref=f1e21] [cursor=pointer]
+          - navigation "Product Navigation" [ref=f1e24]:
+            - list [ref=f1e25]:
+              - listitem [ref=f1e26]:
+                - link "Pro" [ref=f1e27] [cursor=pointer]:
+                  - /url: /products/pro
+              - listitem [ref=f1e28]:
+                - link "Teams" [ref=f1e29] [cursor=pointer]:
+                  - /url: /products/teams
+              - listitem [ref=f1e30]:
+                - link "Pricing" [ref=f1e31] [cursor=pointer]:
+                  - /url: /products
+              - listitem [ref=f1e32]:
+                - link "Documentation" [ref=f1e33] [cursor=pointer]:
+                  - /url: https://docs.npmjs.com
+      - generic [ref=f1e35]:
+        - generic [ref=f1e36]: npm
+        - link "Npm" [ref=f1e38] [cursor=pointer]:
+          - /url: /
+        - generic [ref=f1e42]:
+          - combobox "Search packages" [ref=f1e52]
+          - button "Search" [ref=f1e54]
+        - navigation [ref=f1e56]:
+          - button "Profile menu" [ref=f1e57]:
+            - generic [ref=f1e58]: Menu
+    - main [ref=f1e64]:
+      - generic [ref=f1e65]:
+        - generic [ref=f1e66]:
+          - generic [ref=f1e67]:
+            - heading "Dashboard" [level=1] [ref=f1e68]
+            - generic [ref=f1e69]:
+              - heading "Popular libraries" [level=2] [ref=f1e70]
+              - separator [ref=f1e73]
+              - list "Popular libraries" [ref=f1e74]:
+                - listitem [ref=f1e75]:
+                  - link "react" [ref=f1e76] [cursor=pointer]:
+                    - /url: /package/react
+                - listitem [ref=f1e77]:
+                  - link "lodash" [ref=f1e78] [cursor=pointer]:
+                    - /url: /package/lodash
+                - listitem [ref=f1e79]:
+                  - link "axios" [ref=f1e80] [cursor=pointer]:
+                    - /url: /package/axios
+                - listitem [ref=f1e81]:
+                  - link "react-dom" [ref=f1e82] [cursor=pointer]:
+                    - /url: /package/react-dom
+                - listitem [ref=f1e83]:
+                  - link "chalk" [ref=f1e84] [cursor=pointer]:
+                    - /url: /package/chalk
+                - listitem [ref=f1e85]:
+                  - link "commander" [ref=f1e86] [cursor=pointer]:
+                    - /url: /package/commander
+                - listitem [ref=f1e87]:
+                  - link "tslib" [ref=f1e88] [cursor=pointer]:
+                    - /url: /package/tslib
+                - listitem [ref=f1e89]:
+                  - link "zod" [ref=f1e90] [cursor=pointer]:
+                    - /url: /package/zod
+                - listitem [ref=f1e91]:
+                  - link "express" [ref=f1e92] [cursor=pointer]:
+                    - /url: /package/express
+                - listitem [ref=f1e93]:
+                  - link "inquirer" [ref=f1e94] [cursor=pointer]:
+                    - /url: /package/inquirer
+            - generic [ref=f1e95]:
+              - heading "Discover packages" [level=2] [ref=f1e96]
+              - separator [ref=f1e103]
+              - list "Discover packages" [ref=f1e104]:
+                - listitem [ref=f1e105]:
+                  - link "Front-end" [ref=f1e106] [cursor=pointer]:
+                    - /url: /search?q=keywords:front-end&page=0&ranking=optimal
+                - listitem [ref=f1e110]:
+                  - link "Back-end" [ref=f1e111] [cursor=pointer]:
+                    - /url: /search?q=keywords:backend&page=0&ranking=optimal
+                - listitem [ref=f1e115]:
+                  - link "CLI" [ref=f1e116] [cursor=pointer]:
+                    - /url: /search?q=keywords:cli&page=0&ranking=optimal
+                - listitem [ref=f1e120]:
+                  - link "Documentation" [ref=f1e121] [cursor=pointer]:
+                    - /url: /search?q=keywords:documentation&page=0&ranking=optimal
+                - listitem [ref=f1e125]:
+                  - link "CSS" [ref=f1e126] [cursor=pointer]:
+                    - /url: /search?q=keywords:css&page=0&ranking=optimal
+                - listitem [ref=f1e130]:
+                  - link "Testing" [ref=f1e131] [cursor=pointer]:
+                    - /url: /search?q=keywords:testing&page=0&ranking=optimal
+                - listitem [ref=f1e135]:
+                  - link "IoT" [ref=f1e136] [cursor=pointer]:
+                    - /url: /search?q=keywords:iot&page=0&ranking=optimal
+                - listitem [ref=f1e140]:
+                  - link "Coverage" [ref=f1e141] [cursor=pointer]:
+                    - /url: /search?q=keywords:coverage&page=0&ranking=optimal
+                - listitem [ref=f1e145]:
+                  - link "Mobile" [ref=f1e146] [cursor=pointer]:
+                    - /url: /search?q=keywords:mobile&page=0&ranking=optimal
+                - listitem [ref=f1e150]:
+                  - link "Frameworks" [ref=f1e151] [cursor=pointer]:
+                    - /url: /search?q=keywords:framework&page=0&ranking=optimal
+                - listitem [ref=f1e155]:
+                  - link "Robotics" [ref=f1e156] [cursor=pointer]:
+                    - /url: /search?q=keywords:robotics&page=0&ranking=optimal
+                - listitem [ref=f1e160]:
+                  - link "Math" [ref=f1e161] [cursor=pointer]:
+                    - /url: /search?q=keywords:math&page=0&ranking=optimal
+          - generic [ref=f1e166]:
+            - heading "By the numbers" [level=2] [ref=f1e167]
+            - separator [ref=f1e170]
+            - heading "Packages" [level=3] [ref=f1e171]
+            - strong [ref=f1e172]: 4,415,173
+            - heading "Downloads · Last Week" [level=3] [ref=f1e173]
+            - strong [ref=f1e174]: 136,032,572,712
+            - heading "Downloads · Last Month" [level=3] [ref=f1e175]
+            - strong [ref=f1e176]: 524,530,845,543
+        - generic [ref=f1e178]:
+          - heading "Recently updated packages" [level=2] [ref=f1e179]
+          - separator [ref=f1e182]
+          - list "Recently updated packages" [ref=f1e183]:
+            - listitem [ref=f1e184]:
+              - generic [ref=f1e186]:
+                - link [ref=f1e188] [cursor=pointer]:
+                  - /url: /package/postcss-tailwindcss
+                  - heading "postcss-tailwindcss" [level=3] [ref=f1e189]
+                - paragraph [ref=f1e190]: PostCSS AST utilities for analyzing Tailwind CSS syntax
+                - generic [ref=f1e191]:
+                  - link "publisher GitHub Actions" [ref=f1e193] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e195]: published 3.1.0 • 6 days ago
+                  - generic [ref=f1e196]: published version 3.1.0, 6 days ago
+            - listitem [ref=f1e199]:
+              - generic [ref=f1e201]:
+                - link [ref=f1e203] [cursor=pointer]:
+                  - /url: /package/@mattstack/rt-client
+                  - heading "@mattstack/rt-client" [level=3] [ref=f1e204]
+                - paragraph [ref=f1e205]: "Typed client for the rt daemon: repos, worktrees, ports, tokens, and the event relay"
+                - generic [ref=f1e206]:
+                  - link "publisher m4ttheweric" [ref=f1e208] [cursor=pointer]:
+                    - /url: /~m4ttheweric
+                    - text: m4ttheweric
+                  - generic [ref=f1e210]: published 0.27.0 • 15 hours ago
+                  - generic [ref=f1e211]: published version 0.27.0, 15 hours ago
+            - listitem [ref=f1e214]:
+              - generic [ref=f1e216]:
+                - link [ref=f1e218] [cursor=pointer]:
+                  - /url: /package/eslint-plugin-no-relative-import-paths
+                  - heading "eslint-plugin-no-relative-import-paths" [level=3] [ref=f1e219]
+                - paragraph [ref=f1e220]: Moving a file to different folder, could result in changing all imports statement in that file. This will not happen is the import paths are absolute. The eslint rule helps enforcing having absolute import paths. Support eslint --fix to automatically chan
+                - generic [ref=f1e221]:
+                  - link "publisher GitHub Actions" [ref=f1e223] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e225]: published 1.7.3 • a few seconds ago
+                  - generic [ref=f1e226]: published version 1.7.3, a few seconds ago
+            - listitem [ref=f1e229]:
+              - generic [ref=f1e231]:
+                - link [ref=f1e233] [cursor=pointer]:
+                  - /url: /package/@credo-ts/core
+                  - heading "@credo-ts/core" [level=3] [ref=f1e234]
+                - paragraph [ref=f1e235]: <p align="center"> <br /> <img alt="Credo Logo" src="https://github.com/openwallet-foundation/credo-ts/blob/c7886cb8377ceb8ee4efe8d264211e561a75072d/images/credo-logo.png" height="250px" /> </p> <h1 align="center"><b>Credo - Core</b></h1
+                - generic [ref=f1e236]:
+                  - link "publisher GitHub Actions" [ref=f1e238] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e240]: published 0.7.0 • 5 months ago
+                  - generic [ref=f1e241]: published version 0.7.0, 5 months ago
+            - listitem [ref=f1e244]:
+              - generic [ref=f1e246]:
+                - link [ref=f1e248] [cursor=pointer]:
+                  - /url: /package/@opencode-cockpit/daemon
+                  - heading "@opencode-cockpit/daemon" [level=3] [ref=f1e249]
+                - paragraph [ref=f1e250]: "cockpitd: the process host behind opencode-cockpit (PTY shells, clean logs, wait conditions)"
+                - generic [ref=f1e251]:
+                  - link "publisher GitHub Actions" [ref=f1e253] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e255]: published 0.1.2 • a few seconds ago
+                  - generic [ref=f1e256]: published version 0.1.2, a few seconds ago
+            - listitem [ref=f1e259]:
+              - generic [ref=f1e261]:
+                - link [ref=f1e263] [cursor=pointer]:
+                  - /url: /package/@credo-ts/askar
+                  - heading "@credo-ts/askar" [level=3] [ref=f1e264]
+                - paragraph [ref=f1e265]: <p align="center"> <br /> <img alt="Credo Logo" src="https://github.com/openwallet-foundation/credo-ts/blob/c7886cb8377ceb8ee4efe8d264211e561a75072d/images/credo-logo.png" height="250px" /> </p> <h1 align="center"><b>Credo Askar Module</
+                - generic [ref=f1e266]:
+                  - link "publisher GitHub Actions" [ref=f1e268] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e270]: published 0.7.0 • 5 months ago
+                  - generic [ref=f1e271]: published version 0.7.0, 5 months ago
+            - listitem [ref=f1e274]:
+              - generic [ref=f1e276]:
+                - link [ref=f1e278] [cursor=pointer]:
+                  - /url: /package/@adobe/helix-mediahandler
+                  - heading "@adobe/helix-mediahandler" [level=3] [ref=f1e279]
+                - paragraph [ref=f1e280]: Helix Mediahandler Library
+                - generic [ref=f1e281]:
+                  - link "publisher GitHub Actions" [ref=f1e283] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e285]: published 4.1.2 • a few seconds ago
+                  - generic [ref=f1e286]: published version 4.1.2, a few seconds ago
+            - listitem [ref=f1e289]:
+              - generic [ref=f1e291]:
+                - link [ref=f1e293] [cursor=pointer]:
+                  - /url: /package/@tldraw/state-react
+                  - heading "@tldraw/state-react" [level=3] [ref=f1e294]
+                - paragraph [ref=f1e295]: tldraw infinite canvas SDK (react bindings for state).
+                - generic [ref=f1e296]:
+                  - link "publisher GitHub Actions" [ref=f1e298] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e300]: published 5.4.2 • 7 days ago
+                  - generic [ref=f1e301]: published version 5.4.2, 7 days ago
+            - listitem [ref=f1e304]:
+              - generic [ref=f1e306]:
+                - link [ref=f1e308] [cursor=pointer]:
+                  - /url: /package/@celo/buy-identity
+                  - heading "@celo/buy-identity" [level=3] [ref=f1e309]
+                - paragraph [ref=f1e310]: buy identity — Self.xyz soft-KYC integration (off-chain proof verification + attestation cache)
+                - generic [ref=f1e311]:
+                  - link "publisher GitHub Actions" [ref=f1e313] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e315]: published 0.5.2 • a few seconds ago
+                  - generic [ref=f1e316]: published version 0.5.2, a few seconds ago
+            - listitem [ref=f1e319]:
+              - generic [ref=f1e321]:
+                - link [ref=f1e323] [cursor=pointer]:
+                  - /url: /package/@celo/buy-keystore
+                  - heading "@celo/buy-keystore" [level=3] [ref=f1e324]
+                - paragraph [ref=f1e325]: buy keystore — encrypted Celo wallet storage with OS keychain integration
+                - generic [ref=f1e326]:
+                  - link "publisher GitHub Actions" [ref=f1e328] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e330]: published 0.5.2 • a minute ago
+                  - generic [ref=f1e331]: published version 0.5.2, a minute ago
+    - contentinfo [ref=f1e334]:
+      - heading "Footer" [level=2] [ref=f1e335]
+      - generic [ref=f1e336]:
+        - generic [ref=f1e337]:
+          - link "Visit npm GitHub page" [ref=f1e339] [cursor=pointer]:
+            - /url: https://github.com/npm
+          - link "GitHub" [ref=f1e344] [cursor=pointer]:
+            - /url: https://github.com
+        - generic [ref=f1e347]:
+          - heading "Support" [level=3] [ref=f1e348]
+          - list "Support" [ref=f1e349]:
+            - listitem [ref=f1e350]:
+              - link "Help" [ref=f1e351] [cursor=pointer]:
+                - /url: https://docs.npmjs.com
+            - listitem [ref=f1e352]:
+              - link "Advisories" [ref=f1e353] [cursor=pointer]:
+                - /url: https://github.com/advisories
+            - listitem [ref=f1e354]:
+              - link "Status" [ref=f1e355] [cursor=pointer]:
+                - /url: http://status.npmjs.org/
+            - listitem [ref=f1e356]:
+              - link "Contact npm" [ref=f1e357] [cursor=pointer]:
+                - /url: /support
+        - generic [ref=f1e358]:
+          - heading "Company" [level=3] [ref=f1e359]
+          - list "Company" [ref=f1e360]:
+            - listitem [ref=f1e361]:
+              - link "About" [ref=f1e362] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=f1e363]:
+              - link "Blog" [ref=f1e364] [cursor=pointer]:
+                - /url: https://github.blog/tag/npm/
+            - listitem [ref=f1e365]:
+              - link "Press" [ref=f1e366] [cursor=pointer]:
+                - /url: /press
+        - generic [ref=f1e367]:
+          - heading "Terms & Policies" [level=3] [ref=f1e368]
+          - list "Terms & Policies" [ref=f1e369]:
+            - listitem [ref=f1e370]:
+              - link "Policies" [ref=f1e371] [cursor=pointer]:
+                - /url: /policies/
+            - listitem [ref=f1e372]:
+              - link "Terms of Use" [ref=f1e373] [cursor=pointer]:
+                - /url: /policies/terms
+            - listitem [ref=f1e374]:
+              - link "Code of Conduct" [ref=f1e375] [cursor=pointer]:
+                - /url: /policies/conduct
+            - listitem [ref=f1e376]:
+              - link "Privacy" [ref=f1e377] [cursor=pointer]:
+                - /url: /policies/privacy

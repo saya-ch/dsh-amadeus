@@ -1,0 +1,22 @@
+- generic [ref=f1e3]:
+  - region "网站通知" [ref=f1e379]:
+    - generic [ref=f1e8]:
+      - generic [ref=f1e9]: ⚠️
+      - alert [ref=f1e11]:
+        - text: 绕过2FA的NPM代币被限制——账户变更（2026年8月）和直接发布（2027年1月）。
+        - link "了解如何为 npm 绕过 2FA 令牌弃用做准备" [ref=f1e380] [cursor=pointer]:
+          - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+          - text: 学习如何准备→
+      - button "关闭通知" [ref=f1e381] [cursor=pointer]: ×
+  - main [ref=f1e708]:
+    - link "不客气" [ref=f1e710] [cursor=pointer]:
+      - /url: /
+    - heading "Two-Factor Authentication" [level=1] [ref=f1e713]
+    - generic [ref=f1e714]:
+      - generic [ref=f1e716]:
+        - heading "Security key" [level=2] [ref=f1e723]
+        - paragraph [ref=f1e724]: Click the button below when you are ready to authenticate.
+        - button "Use security key" [ref=f1e725]
+      - generic [ref=f1e726]:
+        - paragraph [ref=f1e727]: Unable to verify with your security key?
+        - button "Use password" [ref=f1e728]

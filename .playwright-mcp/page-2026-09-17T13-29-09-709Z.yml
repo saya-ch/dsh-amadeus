@@ -1,0 +1,336 @@
+- generic [ref=f1e3]:
+  - region "网站通知" [ref=f1e379]:
+    - generic [ref=f1e8]:
+      - generic [ref=f1e9]: ⚠️
+      - alert [ref=f1e11]:
+        - text: 绕过2FA的NPM代币被限制——账户变更（2026年8月）和直接发布（2027年1月）。
+        - link "了解如何为 npm 绕过 2FA 令牌弃用做准备" [ref=f1e380] [cursor=pointer]:
+          - /url: https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/
+          - text: 学习如何准备→
+      - button "关闭通知" [ref=f1e381] [cursor=pointer]: ×
+  - generic [ref=f1e14]:
+    - banner [ref=f1e15]:
+      - generic [ref=f1e16]:
+        - generic [ref=f1e17]:
+          - text: "skip to:"
+          - link "skip to content" [ref=f1e18] [cursor=pointer]:
+            - /url: "#main"
+            - text: content
+          - link "skip to package search" [ref=f1e19] [cursor=pointer]:
+            - /url: "#search"
+            - text: package search
+        - generic [ref=f1e20]:
+          - button "光模式——点击可选择暗" [ref=f1e382] [cursor=pointer]
+          - navigation "产品导航" [ref=f1e383]:
+            - list [ref=f1e25]:
+              - listitem [ref=f1e26]:
+                - link "优点" [ref=f1e384] [cursor=pointer]:
+                  - /url: /products/pro
+              - listitem [ref=f1e28]:
+                - link "参赛队伍" [ref=f1e385] [cursor=pointer]:
+                  - /url: /products/teams
+              - listitem [ref=f1e30]:
+                - link "定价" [ref=f1e386] [cursor=pointer]:
+                  - /url: /products
+              - listitem [ref=f1e32]:
+                - link "文献资料" [ref=f1e387] [cursor=pointer]:
+                  - /url: https://docs.npmjs.com
+      - generic [ref=f1e35]:
+        - generic [ref=f1e36]: NPM
+        - link "不客气" [ref=f1e388] [cursor=pointer]:
+          - /url: /
+        - generic [ref=f1e42]:
+          - combobox "搜索包" [ref=f1e389]
+          - button "搜索" [ref=f1e390]
+        - navigation [ref=f1e56] [cursor=pointer]:
+          - button "个人资料菜单" [expanded] [ref=f1e391]:
+            - generic [ref=f1e58]: 菜单
+          - generic [ref=f1e435]:
+            - heading "saya-ch" [level=2] [ref=f1e436]
+            - list [ref=f1e440]:
+              - listitem [ref=f1e441]:
+                - link "Profile" [active] [ref=f1e442]:
+                  - /url: /~saya-ch
+              - listitem [ref=f1e445]:
+                - link "Packages" [ref=f1e446]:
+                  - /url: /settings/saya-ch/packages
+              - listitem [ref=f1e449]:
+                - link "Account" [ref=f1e450]:
+                  - /url: /settings/saya-ch/profile
+              - listitem [ref=f1e453]:
+                - link "Billing Info" [ref=f1e454]:
+                  - /url: /settings/saya-ch/billing
+              - listitem [ref=f1e457]:
+                - link "Access Tokens" [ref=f1e458]:
+                  - /url: /settings/saya-ch/tokens
+              - listitem [ref=f1e461]:
+                - link "Staged Packages" [ref=f1e462]:
+                  - /url: /settings/saya-ch/staged-packages
+              - listitem [ref=f1e465]:
+                - link "Add Organization" [ref=f1e466]:
+                  - /url: /org/create
+              - listitem [ref=f1e469]:
+                - link "Sign Out" [ref=f1e470]:
+                  - /url: /logout
+    - main [ref=f1e64]:
+      - generic [ref=f1e65]:
+        - generic [ref=f1e66]:
+          - generic [ref=f1e67]:
+            - heading "仪表盘" [level=1] [ref=f1e392]
+            - generic [ref=f1e69]:
+              - heading "流行图书馆" [level=2] [ref=f1e393]
+              - separator [ref=f1e73]
+              - list "流行图书馆" [ref=f1e394]:
+                - listitem [ref=f1e75]:
+                  - link "反应" [ref=f1e395] [cursor=pointer]:
+                    - /url: /package/react
+                - listitem [ref=f1e77]:
+                  - link "洛达什" [ref=f1e396] [cursor=pointer]:
+                    - /url: /package/lodash
+                - listitem [ref=f1e79]:
+                  - link "公理" [ref=f1e397] [cursor=pointer]:
+                    - /url: /package/axios
+                - listitem [ref=f1e81]:
+                  - link "反应-多姆" [ref=f1e398] [cursor=pointer]:
+                    - /url: /package/react-dom
+                - listitem [ref=f1e83]:
+                  - link "粉笔" [ref=f1e399] [cursor=pointer]:
+                    - /url: /package/chalk
+                - listitem [ref=f1e85]:
+                  - link "指挥官" [ref=f1e400] [cursor=pointer]:
+                    - /url: /package/commander
+                - listitem [ref=f1e87]:
+                  - link "TSLIB" [ref=f1e401] [cursor=pointer]:
+                    - /url: /package/tslib
+                - listitem [ref=f1e89]:
+                  - link "佐德" [ref=f1e402] [cursor=pointer]:
+                    - /url: /package/zod
+                - listitem [ref=f1e91]:
+                  - link "快车" [ref=f1e403] [cursor=pointer]:
+                    - /url: /package/express
+                - listitem [ref=f1e93]:
+                  - link "询问者" [ref=f1e404] [cursor=pointer]:
+                    - /url: /package/inquirer
+            - generic [ref=f1e95]:
+              - heading "发现套餐" [level=2] [ref=f1e405]
+              - separator [ref=f1e103]
+              - list "发现套餐" [ref=f1e406]:
+                - listitem [ref=f1e105]:
+                  - link "前端" [ref=f1e407] [cursor=pointer]:
+                    - /url: /search?q=keywords:front-end&page=0&ranking=optimal
+                - listitem [ref=f1e110]:
+                  - link "后端" [ref=f1e408] [cursor=pointer]:
+                    - /url: /search?q=keywords:backend&page=0&ranking=optimal
+                - listitem [ref=f1e115]:
+                  - link "CLI" [ref=f1e116] [cursor=pointer]:
+                    - /url: /search?q=keywords:cli&page=0&ranking=optimal
+                - listitem [ref=f1e120]:
+                  - link "文献资料" [ref=f1e409] [cursor=pointer]:
+                    - /url: /search?q=keywords:documentation&page=0&ranking=optimal
+                - listitem [ref=f1e125]:
+                  - link "CSS" [ref=f1e126] [cursor=pointer]:
+                    - /url: /search?q=keywords:css&page=0&ranking=optimal
+                - listitem [ref=f1e130]:
+                  - link "测试" [ref=f1e410] [cursor=pointer]:
+                    - /url: /search?q=keywords:testing&page=0&ranking=optimal
+                - listitem [ref=f1e135]:
+                  - link "物联网" [ref=f1e411] [cursor=pointer]:
+                    - /url: /search?q=keywords:iot&page=0&ranking=optimal
+                - listitem [ref=f1e140]:
+                  - link "覆盖范围" [ref=f1e412] [cursor=pointer]:
+                    - /url: /search?q=keywords:coverage&page=0&ranking=optimal
+                - listitem [ref=f1e145]:
+                  - link "莫比尔" [ref=f1e413] [cursor=pointer]:
+                    - /url: /search?q=keywords:mobile&page=0&ranking=optimal
+                - listitem [ref=f1e150]:
+                  - link "框架" [ref=f1e414] [cursor=pointer]:
+                    - /url: /search?q=keywords:framework&page=0&ranking=optimal
+                - listitem [ref=f1e155]:
+                  - link "机器人" [ref=f1e415] [cursor=pointer]:
+                    - /url: /search?q=keywords:robotics&page=0&ranking=optimal
+                - listitem [ref=f1e160]:
+                  - link "数学" [ref=f1e416] [cursor=pointer]:
+                    - /url: /search?q=keywords:math&page=0&ranking=optimal
+          - generic [ref=f1e166]:
+            - heading "按部就班" [level=2] [ref=f1e417]
+            - separator [ref=f1e170]
+            - heading "套餐" [level=3] [ref=f1e418]
+            - strong [ref=f1e172]: 4,415,173
+            - heading "下载量 ·上周" [level=3] [ref=f1e419]
+            - strong [ref=f1e174]: 136,032,572,712
+            - heading "下载量 ·上个月" [level=3] [ref=f1e420]
+            - strong [ref=f1e176]: 524,530,845,543
+        - generic [ref=f1e178]:
+          - heading "最近更新的软件包" [level=2] [ref=f1e421]
+          - separator [ref=f1e182]
+          - list "最近更新的软件包" [ref=f1e422]:
+            - listitem [ref=f1e184]:
+              - generic [ref=f1e186]:
+                - link [ref=f1e423] [cursor=pointer]:
+                  - /url: /package/postcss-tailwindcss
+                  - heading "Postcss-tailwindcss" [level=3] [ref=f1e424]
+                - paragraph [ref=f1e190]: 分析Tailwind CSS语法的后期CSS AST工具
+                - generic [ref=f1e191]:
+                  - link "发布者 GitHub Actions" [ref=f1e425] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub 操作
+                  - generic [aria-hidden] [ref=f1e194]: 发布于 3.1.0 • 6天前
+                  - generic [ref=f1e196]: 发布版本3.1.0,6天前
+            - listitem [ref=f1e199]:
+              - generic [ref=f1e201]:
+                - link [ref=f1e203] [cursor=pointer]:
+                  - /url: /package/@mattstack/rt-client
+                  - heading "@mattstack/rt-client" [level=3] [ref=f1e204]
+                - paragraph [ref=f1e205]: rt 守护进程的类型客户端：repos、worktrees、ports、tokens 和 event relay
+                - generic [ref=f1e206]:
+                  - link "出版商 M4ttheweric" [ref=f1e426] [cursor=pointer]:
+                    - /url: /~m4ttheweric
+                    - text: M4ttheweric
+                  - generic [aria-hidden] [ref=f1e209]: 发布于 0.27.0 • 15 小时前
+                  - generic [ref=f1e211]: 发布版本0.27.0,15小时前
+            - listitem [ref=f1e214]:
+              - generic [ref=f1e216]:
+                - link [ref=f1e218] [cursor=pointer]:
+                  - /url: /package/eslint-plugin-no-relative-import-paths
+                  - heading "eslint-plugin-no-relative-import-paths" [level=3] [ref=f1e219]
+                - paragraph [ref=f1e220]: 将文件移到不同文件夹可能会导致该文件中的所有导入语句都被更改。如果导入路径是绝对的，这种情况就不会发生。eslint 规则有助于强制执行绝对导入路径。支持 eslint ——fix 自动回复
+                - generic [ref=f1e221]:
+                  - link "发布者 GitHub Actions" [ref=f1e427] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub 操作
+                  - generic [aria-hidden] [ref=f1e224]: 发布于 1.7.3 • 几秒前
+                  - generic [ref=f1e226]: 发布版本1.7.3，几秒钟前
+            - listitem [ref=f1e229]:
+              - generic [ref=f1e231]:
+                - link [ref=f1e428] [cursor=pointer]:
+                  - /url: /package/@credo-ts/core
+                  - heading "@credo-ts/核心" [level=3] [ref=f1e429]
+                - paragraph [ref=f1e235]: <p align=“center”> <br /> <img alt=“Credo Logo” src=“https://github.com/openwallet-foundation/credo-ts/blob/c7886cb8377ceb8ee4efe8d264211e561a75072d/images/credo-logo.png” height=“250px” /> </p> <h1 align=“center”><b>Credo - Core</b></h1
+                - generic [ref=f1e236]:
+                  - link "发布者 GitHub Actions" [ref=f1e430] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub 操作
+                  - generic [aria-hidden] [ref=f1e239]: 发布于 0.7.0 • 5个月前
+                  - generic [ref=f1e241]: 发布版本 0.7.0,5个月前
+            - listitem [ref=f1e244]:
+              - generic [ref=f1e246]:
+                - link [ref=f1e431] [cursor=pointer]:
+                  - /url: /package/@opencode-cockpit/daemon
+                  - heading "@opencode驾驶舱/守护灵" [level=3] [ref=f1e432]
+                - paragraph [ref=f1e250]: cockpitd：opencode-cockpit 背后的进程主机（PTY 壳体、清洁日志、等待条件）
+                - generic [ref=f1e251]:
+                  - link "发布者 GitHub Actions" [ref=f1e433] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub 操作
+                  - generic [aria-hidden] [ref=f1e254]: 发布于 0.1.2 • 几秒前
+                  - generic [ref=f1e256]: 发布版本0.1.2，几秒钟前
+            - listitem [ref=f1e259]:
+              - generic [ref=f1e261]:
+                - link [ref=f1e263] [cursor=pointer]:
+                  - /url: /package/@credo-ts/askar
+                  - heading "@credo-ts/askar" [level=3] [ref=f1e264]
+                - paragraph [ref=f1e265]: <p align=“center”> <br /> <img alt=“Credo Logo” src=“https://github.com/openwallet-foundation/credo-ts/blob/c7886cb8377ceb8ee4efe8d264211e561a75072d/images/credo-logo.png” height=“250px” /> </p> <h1 align=“center”><b>Credo Askar 模块</
+                - generic [ref=f1e266]:
+                  - link "发布者 GitHub Actions" [ref=f1e434] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub 操作
+                  - generic [aria-hidden] [ref=f1e269]: 发布于 0.7.0 • 5个月前
+                  - generic [ref=f1e271]: 发布版本 0.7.0,5个月前
+            - listitem [ref=f1e274]:
+              - generic [ref=f1e276]:
+                - link [ref=f1e278] [cursor=pointer]:
+                  - /url: /package/@adobe/helix-mediahandler
+                  - heading "@adobe/helix-mediahandler" [level=3] [ref=f1e279]
+                - paragraph [ref=f1e280]: Helix Mediahandler 库
+                - generic [ref=f1e281]:
+                  - link "publisher GitHub Actions" [ref=f1e283] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e285]: published 4.1.2 • a few seconds ago
+                  - generic [ref=f1e286]: published version 4.1.2, a few seconds ago
+            - listitem [ref=f1e289]:
+              - generic [ref=f1e291]:
+                - link [ref=f1e293] [cursor=pointer]:
+                  - /url: /package/@tldraw/state-react
+                  - heading "@tldraw/state-react" [level=3] [ref=f1e294]
+                - paragraph [ref=f1e295]: tldraw infinite canvas SDK (react bindings for state).
+                - generic [ref=f1e296]:
+                  - link "publisher GitHub Actions" [ref=f1e298] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e300]: published 5.4.2 • 7 days ago
+                  - generic [ref=f1e301]: published version 5.4.2, 7 days ago
+            - listitem [ref=f1e304]:
+              - generic [ref=f1e306]:
+                - link [ref=f1e308] [cursor=pointer]:
+                  - /url: /package/@celo/buy-identity
+                  - heading "@celo/buy-identity" [level=3] [ref=f1e309]
+                - paragraph [ref=f1e310]: buy identity — Self.xyz soft-KYC integration (off-chain proof verification + attestation cache)
+                - generic [ref=f1e311]:
+                  - link "publisher GitHub Actions" [ref=f1e313] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e315]: published 0.5.2 • a few seconds ago
+                  - generic [ref=f1e316]: published version 0.5.2, a few seconds ago
+            - listitem [ref=f1e319]:
+              - generic [ref=f1e321]:
+                - link [ref=f1e323] [cursor=pointer]:
+                  - /url: /package/@celo/buy-keystore
+                  - heading "@celo/buy-keystore" [level=3] [ref=f1e324]
+                - paragraph [ref=f1e325]: buy keystore — encrypted Celo wallet storage with OS keychain integration
+                - generic [ref=f1e326]:
+                  - link "publisher GitHub Actions" [ref=f1e328] [cursor=pointer]:
+                    - /url: https://gh.io/npm-docs-trusted-publishers
+                    - text: GitHub Actions
+                  - generic [ref=f1e330]: published 0.5.2 • a minute ago
+                  - generic [ref=f1e331]: published version 0.5.2, a minute ago
+    - contentinfo [ref=f1e334]:
+      - heading "Footer" [level=2] [ref=f1e335]
+      - generic [ref=f1e336]:
+        - generic [ref=f1e337]:
+          - link "Visit npm GitHub page" [ref=f1e339] [cursor=pointer]:
+            - /url: https://github.com/npm
+          - link "GitHub" [ref=f1e344] [cursor=pointer]:
+            - /url: https://github.com
+        - generic [ref=f1e347]:
+          - heading "Support" [level=3] [ref=f1e348]
+          - list "Support" [ref=f1e349]:
+            - listitem [ref=f1e350]:
+              - link "Help" [ref=f1e351] [cursor=pointer]:
+                - /url: https://docs.npmjs.com
+            - listitem [ref=f1e352]:
+              - link "Advisories" [ref=f1e353] [cursor=pointer]:
+                - /url: https://github.com/advisories
+            - listitem [ref=f1e354]:
+              - link "Status" [ref=f1e355] [cursor=pointer]:
+                - /url: http://status.npmjs.org/
+            - listitem [ref=f1e356]:
+              - link "Contact npm" [ref=f1e357] [cursor=pointer]:
+                - /url: /support
+        - generic [ref=f1e358]:
+          - heading "Company" [level=3] [ref=f1e359]
+          - list "Company" [ref=f1e360]:
+            - listitem [ref=f1e361]:
+              - link "About" [ref=f1e362] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=f1e363]:
+              - link "Blog" [ref=f1e364] [cursor=pointer]:
+                - /url: https://github.blog/tag/npm/
+            - listitem [ref=f1e365]:
+              - link "Press" [ref=f1e366] [cursor=pointer]:
+                - /url: /press
+        - generic [ref=f1e367]:
+          - heading "Terms & Policies" [level=3] [ref=f1e368]
+          - list "Terms & Policies" [ref=f1e369]:
+            - listitem [ref=f1e370]:
+              - link "Policies" [ref=f1e371] [cursor=pointer]:
+                - /url: /policies/
+            - listitem [ref=f1e372]:
+              - link "Terms of Use" [ref=f1e373] [cursor=pointer]:
+                - /url: /policies/terms
+            - listitem [ref=f1e374]:
+              - link "Code of Conduct" [ref=f1e375] [cursor=pointer]:
+                - /url: /policies/conduct
+            - listitem [ref=f1e376]:
+              - link "Privacy" [ref=f1e377] [cursor=pointer]:
+                - /url: /policies/privacy
