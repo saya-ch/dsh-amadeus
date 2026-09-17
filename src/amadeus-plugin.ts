@@ -8,7 +8,7 @@ import { MobileAccessGateway } from './gateway.js'
 import { createMobileAccessService } from './extensions.js'
 import { createAmadeusExtension, type AmadeusGatewayOptions, type AmadeusSessionSummary, AmadeusRequestError } from './amadeus-extension.js'
 import { AMADEUS_MODE_ID } from './amadeus-mode.js'
-import { AmadeusSessionCommands, AmadeusSessionsAdapter, type AmadeusSessionsContext } from './amadeus-sessions.js'
+import { AmadeusSessionCommands, AmadeusSessionsAdapter, toWorkspaceSummary, type AmadeusSessionsContext } from './amadeus-sessions.js'
 import { AmadeusSessionRegistry, amadeusSessionRegistryFile } from './amadeus-session-registry.js'
 import { AmadeusPreviewStore, AmadeusReportsAdapter } from './amadeus-reports.js'
 import { AmadeusApprovalAdapter, type AmadeusApprovalContext } from './amadeus-approval.js'
@@ -332,11 +332,7 @@ export async function apply(ctx: Context, config: PluginConfig): Promise<void> {
     workspaces: {
       list: async () => {
         const records = await sessionsContext.workspaceRegistry.list()
-        return records.map(record => ({
-          id: record.header.id,
-          path: record.header.path ?? '',
-          title: record.header.title ?? '',
-        }))
+        return records.map(toWorkspaceSummary)
       },
       browse: async (path) => {
         // App 内目录浏览：dsh directoryPicker 的 browse 后端（directory-picker-mobile-host）

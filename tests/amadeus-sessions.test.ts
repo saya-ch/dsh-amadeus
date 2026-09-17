@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AmadeusSessionsAdapter, AmadeusSessionCommands } from '../src/amadeus-sessions.js'
+import { AmadeusSessionsAdapter, AmadeusSessionCommands, toWorkspaceSummary } from '../src/amadeus-sessions.js'
 
 function fakeCtx() {
   const sessions = new Map<string, any>()
@@ -202,5 +202,20 @@ describe('session commands', () => {
     expect(page.records).toHaveLength(2)
     expect(page.records[1]?.event.type).toBe('user/message')
     expect(page.hasMore).toBe(false)
+  })
+})
+describe('toWorkspaceSummary', () => {
+  it('reads the flat upstream Workspace shape', () => {
+    expect(toWorkspaceSummary({ id: 'w1', path: '/home/w', title: '工作区' }))
+      .toEqual({ id: 'w1', path: '/home/w', title: '工作区' })
+  })
+
+  it('tolerates the legacy header-wrapped shape', () => {
+    expect(toWorkspaceSummary({ header: { id: 'w2', path: '/home/x', title: '旧' } } as any))
+      .toEqual({ id: 'w2', path: '/home/x', title: '旧' })
+  })
+
+  it('defaults missing fields to empty strings', () => {
+    expect(toWorkspaceSummary({ id: 'w3' } as any)).toEqual({ id: 'w3', path: '', title: '' })
   })
 })

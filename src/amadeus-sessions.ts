@@ -35,9 +35,23 @@ export interface AmadeusSessionsContext {
   readonly workspaceRegistry: {
     archiveSession(sessionId: string): Promise<void>
     readonly archivedSessionIds: readonly string[]
-    list(): Promise<Array<{ header: { id: string; path?: string; title?: string } }>>
+    /** DSH Workspace 实体是扁平的（id/path/title 直挂，无 header 包装）。 */
+    list(): Promise<Array<{ id: string; path: string; title?: string; header?: { id?: unknown; path?: unknown; title?: unknown } }>>
     resolveByPath(path: string): Promise<{ id: string; path: string; title?: string } | undefined>
     create(path: string, title?: string): Promise<{ id: string; path: string; title?: string }>
+  }
+}
+
+/** DSH Workspace 记录归一化为网关摘要：读扁平字段，容忍历史 header 包装。 */
+export function toWorkspaceSummary(record: {
+  id?: unknown; path?: unknown; title?: unknown
+  header?: { id?: unknown; path?: unknown; title?: unknown }
+}): { id: string; path: string; title: string } {
+  const source = record.header ?? record
+  return {
+    id: String(source.id ?? ''),
+    path: typeof source.path === 'string' ? source.path : '',
+    title: typeof source.title === 'string' ? source.title : '',
   }
 }
 
