@@ -12,8 +12,10 @@
 <br>
 
 [![License](https://img.shields.io/badge/code-Apache--2.0-blue.svg?style=flat-square)](LICENSE)
+[![npm](https://img.shields.io/npm/v/dsh-amadeus.svg?style=flat-square)](https://www.npmjs.com/package/dsh-amadeus)
+[![CI](https://github.com/saya-ch/dsh-amadeus/actions/workflows/ci.yml/badge.svg)](https://github.com/saya-ch/dsh-amadeus/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933.svg?style=flat-square&logo=node.js&logoColor=white)](package.json)
-[![Tests](https://img.shields.io/badge/tests-99%20host%20%2B%2080%20app-brightgreen.svg?style=flat-square)](#08-状态)
+[![Tests](https://img.shields.io/badge/tests-102%20host%20%2B%2080%20app-brightgreen.svg?style=flat-square)](#08-状态)
 [![Android](https://img.shields.io/badge/android-10%2B%20(API%2029)-3DDC84.svg?style=flat-square&logo=android&logoColor=white)](#02-使用教程)
 [![DSH](https://img.shields.io/badge/DSH-plugin-4B32C3.svg?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)
 [![Art](https://img.shields.io/badge/art-CC%20BY--NC--SA%204.0-lightgrey.svg?style=flat-square)](#11-素材与合规)
@@ -103,19 +105,20 @@
 ### 第 1 步 · 电脑：安装插件
 
 ```bash
-git clone https://github.com/saya-ch/dsh-amadeus
-cd dsh-amadeus
-npm install && npm run build      # 产出 lib/index.mjs（Host 插件）+ lib/client.js（控制面板）
-
-# 注册进 DSH 的 web profile（路径换成你的绝对路径）
-dsh plugin --profile web add file:/absolute/path/to/dsh-amadeus
+dsh plugin --profile web add dsh-amadeus
+# npm 包地址：https://www.npmjs.com/package/dsh-amadeus
 dsh --profile web
 ```
 
-> **关于安装方式**
-> `dsh-amadeus` 尚未发布到 npm，因此用本地路径安装；
 > 包内声明了 `dsh.bundle.patch`，`dsh plugin add` 会自动把它挂进 profile 的 bundles。
 > 首次启动时插件把「Amadeus: Whale」预设写入 `~/.dsh/.agent-presets/amadeus/`。
+>
+> 想改代码自己构建（见 [06 快速开始](#06-快速开始)）：
+> ```bash
+> git clone https://github.com/saya-ch/dsh-amadeus && cd dsh-amadeus
+> npm install && npm run build
+> dsh plugin --profile web add file:"$PWD"
+> ```
 
 ### 第 2 步 · 手机：安装 App
 
@@ -280,7 +283,7 @@ flowchart LR
 | `src/` | Host 插件 · **36 模块** |
 | `app/amadeus-android/` | 原生 Compose App |
 | `app/amadeus-android/app/src/main/assets/amadeus/` | 立绘 · 背景 · UI 装饰 |
-| `tests/` | **12 文件 · 99 tests** |
+| `tests/` | **12 文件 · 102 tests** |
 | `docs/` | 设计文档 + 发布流程 |
 
 <details>
@@ -337,7 +340,7 @@ flowchart LR
 node -v          # 需要 ^22.19.0 || >=24.0.0
 npm install
 npm run build    # lib/index.mjs（Host 插件）+ lib/client.js（web 控制面板）
-npx vitest run   # 12 files / 99 tests
+npx vitest run   # 12 files / 102 tests
 ```
 
 插件随 DSH 启动加载。改完 `src/` → `npm run build` → **重启 DSH** 生效。
@@ -468,7 +471,7 @@ sequenceDiagram
 - [x] 事件流 + 回合边界信号
 - [x] choice 取消防挂死
 - [x] 会话注册表缓存（避免全量读 surface）
-- [x] **Host 99 tests · App 80 tests 全绿**
+- [x] **Host 102 tests · App 80 tests 全绿**
 
 </td><td valign="top" width="50%">
 
